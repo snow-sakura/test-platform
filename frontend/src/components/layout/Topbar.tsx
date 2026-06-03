@@ -1,0 +1,116 @@
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Layout, Button, Breadcrumb, Select, Dropdown, Space, Avatar } from 'antd';
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
+import { useAppStore } from '@/stores/app-store';
+import { useAuthStore } from '@/stores/auth-store';
+
+const { Header } = Layout;
+
+const localeMap: Record<string, string> = {
+  'zh-cn': '中文',
+  en: 'English',
+};
+
+// 不需要侧边栏和面包屑的路径
+const NO_LAYOUT_PATHS = ['/login', '/register'];
+
+export default function Topbar() {
+  const t = useTranslations();
+  const pathname = usePathname();
+  const router = useRouter();
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const language = useAppStore((s) => s.language);
+  const setLanguage = useAppStore((s) => s.setLanguage);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  // 检查是否在不显示布局的页面
+  const localePath = '/' + pathname.split('/').filter(Boolean).slice(1).join('/');
+  const isNoLayout = NO_LAYOUT_PATHS.some((p) => localePath.startsWith(p));
+
+  if (isNoLayout) return null;
+
+  const pathSegments = pathname.split('/').filter(Boolean).slice(1);
+
+  const breadcrumbItems = [
+    { title: 'TestHub' },
+    ...pathSegments.map((seg) => {
+      const label = t(`nav.${seg}` as any, { fallback: seg });
+      return { title: label };
+    }),
+  ];
+
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: t('auth.profile'),
+      onClick: () => router.push('/profile'),
+    },
+    { type: 'divider' as const },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: t('auth.logout'),
+      onClick: async () => {
+        await logout();
+        router.push('/login');
+      },
+    },
+  ];
+
+  return (
+    <Header
+      style={{
+        background: '#fff',
+        padding: '0 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottom: '1px solid #f0f0f0',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Button
+          type="text"
+          icon={sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={toggleSidebar}
+        />
+        <Breadcrumb items={breadcrumbItems} />
+      </div>
+      <Space>
+        <Select
+          value={language}
+          onChange={(val) => {
+            setLanguage(val);
+            router.refresh();
+          }}
+          style={{ width: 100 }}
+          options={Object.entries(localeMap).map(([value, label]) => ({ value, label }))}
+        />
+        {user ? (
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Button type="text" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Avatar size="small" icon={<UserOutlined />} />
+              {user.username}
+            </Button>
+          </Dropdown>
+        ) : (
+          <Button type="link" onClick={() => router.push('/login')}>
+            {t('auth.login')}
+          </Button>
+        )}
+      </Space>
+    </Header>
+  );
+}
