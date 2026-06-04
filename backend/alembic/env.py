@@ -28,6 +28,11 @@ from app.modules.test_cases.models import TestCase  # noqa: F401
 from app.modules.task_batches.models import TaskBatch  # noqa: F401
 from app.modules.knowledge_bases.models import KnowledgeBase, KnowledgeDocument  # noqa: F401
 from app.modules.settings.models import SystemSettings  # noqa: F401
+from app.modules.api_testing.models import (
+    ApiProject, ApiCollection, ApiRequest, ApiTestSuite,
+    ApiEnvironment, ApiRequestHistory, ApiScheduledTask,
+    ApiNotificationConfig, ApiNotificationLog,
+)  # noqa: F401
 
 target_metadata = Base.metadata
 

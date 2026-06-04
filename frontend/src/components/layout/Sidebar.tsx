@@ -29,7 +29,7 @@ export default function Sidebar() {
     { key: '/projects', icon: <FolderOutlined />, label: t('nav.projects') },
     { type: 'divider' } as any,
     { key: 'ai_generation', icon: <ThunderboltOutlined />, label: t('nav.aiGeneration') },
-    { key: 'api_test', icon: <ApiOutlined />, label: t('nav.apiTesting'), disabled: true },
+    { key: '/api-testing', icon: <ApiOutlined />, label: t('nav.apiTesting') },
     { key: 'ui_auto', icon: <MonitorOutlined />, label: t('nav.uiAutomation'), disabled: true },
     { key: 'data_factory', icon: <DatabaseOutlined />, label: t('nav.dataFactory'), disabled: true },
     { key: 'app_auto', icon: <MobileOutlined />, label: t('nav.appAutomation'), disabled: true },
