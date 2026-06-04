@@ -7,12 +7,17 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import random
 import re
+import string as str_mod
 import time
+import uuid
 from base64 import b64encode
+from datetime import datetime
 
 import httpx
 
+from .crud import create_request_history, get_environment, get_request
 from .models import ApiEnvironment, ApiRequest, ApiNotificationConfig
 
 
@@ -28,10 +33,10 @@ class VariableResolver:
     """
 
     function_registry = {
-        "random_str": lambda n: __import__("string").ascii_lowercase + __import__("string").digits,
-        "random_int": lambda min_v, max_v: str(__import__("random").randint(int(min_v), int(max_v))),
+        "random_str": lambda n: "".join(random.choices(str_mod.ascii_letters + str_mod.digits, k=int(n))),
+        "random_int": lambda min_v, max_v: str(random.randint(int(min_v), int(max_v))),
         "timestamp": lambda: str(int(time.time())),
-        "uuid": lambda: str(__import__("uuid").uuid4()),
+        "uuid": lambda: str(uuid.uuid4()),
     }
 
     def __init__(self, variables: dict[str, str] | None = None):
@@ -326,11 +331,6 @@ async def run_suite_execution(
     Returns:
         SuiteExecuteResult 格式字典
     """
-    import asyncio
-
-    from app.database import AsyncSessionLocal
-    from .crud import create_request_history, get_environment, get_request
-
     started_at = time.time()
 
     # 获取需要执行的请求
@@ -424,7 +424,7 @@ async def run_suite_execution(
             })
 
     duration_ms = round((time.time() - started_at) * 1000, 2)
-    finished_at = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     total = len(results)
     passed_count = sum(1 for r in results if r["passed"])
@@ -438,6 +438,6 @@ async def run_suite_execution(
         "failed": failed_count,
         "results": results,
         "duration_ms": duration_ms,
-        "started_at": "suite execution started",
+        "started_at": datetime.fromtimestamp(started_at).strftime("%Y-%m-%d %H:%M:%S"),
         "finished_at": finished_at,
     }

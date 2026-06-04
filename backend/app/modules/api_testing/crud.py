@@ -369,11 +369,12 @@ async def delete_histories(db: AsyncSession, ids: list[int]) -> None:
     await db.flush()
 
 
-async def clear_project_histories(db: AsyncSession, project_id: int) -> None:
-    """清空项目所有历史记录"""
-    await db.execute(
-        delete(ApiRequestHistory).where(ApiRequestHistory.project_id == project_id)
-    )
+async def clear_project_histories(db: AsyncSession, project_id: int | None = None) -> None:
+    """清空项目所有历史记录（project_id 为 None 或 0 时清空全部）"""
+    query = delete(ApiRequestHistory)
+    if project_id is not None and project_id > 0:
+        query = query.where(ApiRequestHistory.project_id == project_id)
+    await db.execute(query)
     await db.flush()
 
 
@@ -527,6 +528,43 @@ async def create_notification_log(db: AsyncSession, data: dict) -> ApiNotificati
 
 
 # ====== 仪表盘统计 ======
+
+async def get_projects_collection_counts(db: AsyncSession, project_ids: list[int]) -> dict[int, int]:
+    """批量获取多个项目的集合数"""
+    if not project_ids:
+        return {}
+    result = await db.execute(
+        select(ApiCollection.project_id, func.count(ApiCollection.id))
+        .where(ApiCollection.project_id.in_(project_ids))
+        .group_by(ApiCollection.project_id)
+    )
+    return dict(result.all())
+
+
+async def get_projects_request_counts(db: AsyncSession, project_ids: list[int]) -> dict[int, int]:
+    """批量获取多个项目的请求数"""
+    if not project_ids:
+        return {}
+    result = await db.execute(
+        select(ApiCollection.project_id, func.count(ApiRequest.id))
+        .join(ApiRequest, ApiRequest.collection_id == ApiCollection.id)
+        .where(ApiCollection.project_id.in_(project_ids))
+        .group_by(ApiCollection.project_id)
+    )
+    return dict(result.all())
+
+
+async def get_collections_request_counts(db: AsyncSession, collection_ids: list[int]) -> dict[int, int]:
+    """批量获取多个集合的请求数"""
+    if not collection_ids:
+        return {}
+    result = await db.execute(
+        select(ApiRequest.collection_id, func.count(ApiRequest.id))
+        .where(ApiRequest.collection_id.in_(collection_ids))
+        .group_by(ApiRequest.collection_id)
+    )
+    return dict(result.all())
+
 
 async def get_dashboard_stats(db: AsyncSession) -> dict:
     """获取仪表盘统计数据"""

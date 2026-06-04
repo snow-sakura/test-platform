@@ -4,10 +4,13 @@
 """
 from __future__ import annotations
 
+import time
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import async_session, get_db
 from app.modules.auth.dependencies import get_current_user
 
 from .crud import (
@@ -18,10 +21,12 @@ from .crud import (
     delete_environment, delete_histories, delete_notification,
     delete_api_project, delete_request, delete_scheduled_task,
     delete_test_suite, get_all_active_tasks, get_collection,
-    get_dashboard_stats, get_environment, get_environments,
-    get_notification, get_notification_logs, get_notifications,
-    get_api_project, get_api_projects, get_project_collections_all,
-    get_project_request_count, get_request, get_request_histories,
+    get_collections_request_counts, get_dashboard_stats,
+    get_environment, get_environments, get_notification,
+    get_notification_logs, get_notifications, get_api_project,
+    get_api_projects, get_project_collections_all,
+    get_project_request_count, get_projects_collection_counts,
+    get_projects_request_counts, get_request, get_request_histories,
     get_request_history, get_requests_by_collection, get_requests_by_ids,
     get_scheduled_task, get_scheduled_tasks, get_test_suite,
     get_test_suites, get_today_executions, update_collection,
@@ -41,38 +46,15 @@ from .schemas import (
     DashboardStats, HistoryBatchDelete, HistoryClearRequest,
     RequestExecuteRequest, RequestExecuteResponse,
 )
-from .services import RequestExecutor, VariableResolver, run_suite_execution
+from .services import (
+    NotificationSender, RequestExecutor, VariableResolver,
+    run_suite_execution,
+)
 
 router = APIRouter(
     dependencies=[Depends(get_current_user)],
     tags=["api_testing"],
 )
-
-
-def _build_collection_tree(
-    collections: list, parent_id: int | None = None,
-) -> list[dict]:
-    """递归构建集合树"""
-    tree = []
-    for col in collections:
-        if col.parent_id == parent_id:
-            # 计算该集合下的请求数
-            request_count = len(
-                [c for c in collections if c.id == col.id]
-            )  # placeholder, actual count from relationship
-            request_count = getattr(col, "request_count", 0)
-
-            node = {
-                "id": col.id,
-                "project_id": col.project_id,
-                "name": col.name,
-                "parent_id": col.parent_id,
-                "sort_order": col.sort_order,
-                "request_count": request_count,
-                "children": _build_collection_tree(collections, col.id),
-            }
-            tree.append(node)
-    return tree
 
 
 # ====== 仪表盘 ======
@@ -97,13 +79,15 @@ async def list_api_projects(
     skip = (page - 1) * page_size
     projects, total = await get_api_projects(db, search, status, skip, page_size)
 
-    # 计算集合数和请求数
+    # 批量查询集合数和请求数（避免 N+1）
+    project_ids = [p.id for p in projects]
+    col_counts = await get_projects_collection_counts(db, project_ids) if project_ids else {}
+    req_counts = await get_projects_request_counts(db, project_ids) if project_ids else {}
     items = []
     for p in projects:
         item = ApiProjectResponse.model_validate(p)
-        cols = await get_project_collections_all(db, p.id)
-        item.collection_count = len(cols)
-        item.request_count = await get_project_request_count(db, p.id)
+        item.collection_count = col_counts.get(p.id, 0)
+        item.request_count = req_counts.get(p.id, 0)
         items.append(item)
 
     return {
@@ -179,11 +163,9 @@ async def list_collections_tree(
     """获取项目集合树（嵌套结构）"""
     collections = await get_project_collections_all(db, project_id)
 
-    # 计算每个集合的请求数
-    col_request_counts = {}
-    for col in collections:
-        reqs = await get_requests_by_collection(db, col.id)
-        col_request_counts[col.id] = len(reqs)
+    # 批量查询每个集合的请求数（避免 N+1）
+    col_ids = [col.id for col in collections]
+    col_request_counts = await get_collections_request_counts(db, col_ids) if col_ids else {}
 
     # 构建树
     def build_tree(parent_id: int | None = None) -> list[dict]:
@@ -329,7 +311,6 @@ async def execute_single_request(
     # 变量解析
     resolver = None
     if data and data.environment_id:
-        from .crud import get_environment
         env = await get_environment(db, data.environment_id)
         if env and env.variables:
             resolver = VariableResolver(env.variables)
@@ -382,11 +363,6 @@ async def batch_execute_requests(
     db: AsyncSession = Depends(get_db),
 ):
     """批量执行请求"""
-    import asyncio
-    import time
-
-    from .crud import get_environment
-
     started_at = time.time()
 
     # 获取请求定义
@@ -489,8 +465,8 @@ async def batch_execute_requests(
         "failed": failed_count,
         "results": results,
         "duration_ms": duration_ms,
-        "started_at": "batch started",
-        "finished_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "started_at": datetime.fromtimestamp(started_at).strftime("%Y-%m-%d %H:%M:%S"),
+        "finished_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
@@ -576,7 +552,6 @@ async def execute_test_suite_api(
     if not suite:
         raise HTTPException(status_code=404, detail="套件不存在")
 
-    from app.database import async_session  # 使用后台 session 工厂
     result = await run_suite_execution(
         async_session, suite, environment_id,
     )
@@ -870,8 +845,6 @@ async def test_notification_send(
     db: AsyncSession = Depends(get_db),
 ):
     """测试发送通知"""
-    from .services import NotificationSender
-
     notify = await get_notification(db, notify_id)
     if not notify:
         raise HTTPException(status_code=404, detail="通知配置不存在")

@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Select, message, Button, Modal, Input, Row, Col, Card } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { getApiProjects, getRequests, createRequest, deleteRequest } from '@/lib/api/api-testing';
+import { getApiProjects, createRequest } from '@/lib/api/api-testing';
 import type { ApiProject } from '@/lib/api/api-testing';
 import CollectionTree from '@/components/api-testing/CollectionTree';
 import RequestEditor from '@/components/api-testing/RequestEditor';

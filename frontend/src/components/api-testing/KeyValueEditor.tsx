@@ -28,14 +28,13 @@ export default function KeyValueEditor({
   const [pairs, setPairs] = useState<KeyValuePair[]>([]);
 
   useEffect(() => {
-    // 将 Record<string,string> 转为 [{key, value}]
     const entries = Object.entries(value || {});
     if (entries.length === 0) {
       setPairs([{ key: '', value: '' }]);
     } else {
       setPairs(entries.map(([k, v]) => ({ key: k, value: v })));
     }
-  }, []);
+  }, [value]);
 
   const notifyChange = (newPairs: KeyValuePair[]) => {
     const result: Record<string, string> = {};

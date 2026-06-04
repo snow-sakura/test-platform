@@ -9,7 +9,7 @@ import { PlusOutlined, ThunderboltOutlined, DeleteOutlined, CheckCircleOutlined,
 import {
   getApiProjects, getTestSuites, createTestSuite,
   deleteTestSuite, getTestSuite, updateTestSuite,
-  executeTestSuite, getRequests,
+  executeTestSuite, getRequest,
 } from '@/lib/api/api-testing';
 import type { ApiProject, ApiTestSuite, ApiRequest, SuiteExecuteResult, SingleRequestResult } from '@/lib/api/api-testing';
 
@@ -195,9 +195,7 @@ function SuiteRequestItem({ requestId, result, onRemove }: {
   const [req, setReq] = useState<ApiRequest | null>(null);
 
   useEffect(() => {
-    import('@/lib/api/api-testing').then((mod) => {
-      mod.getRequest(requestId).then((res) => setReq(res.data)).catch(() => {});
-    });
+    getRequest(requestId).then((res) => setReq(res.data)).catch(() => {});
   }, [requestId]);
 
   return (

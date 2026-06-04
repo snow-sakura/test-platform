@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.scheduler import add_cron_job, add_interval_job, remove_job
 from app.database import async_session
 
+from .crud import get_all_active_tasks, get_scheduled_task, get_test_suite, update_scheduled_task
 from .models import ApiScheduledTask
+from .services import run_suite_execution
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +28,6 @@ def _make_job_id(task_id: int) -> str:
 
 async def execute_scheduled_task(task_id: int) -> None:
     """执行定时任务（被 APScheduler 回调）"""
-    from .crud import get_scheduled_task, update_scheduled_task
-    from .services import run_suite_execution
-
     try:
         async with async_session() as db:
             task = await get_scheduled_task(db, task_id)
@@ -35,12 +35,10 @@ async def execute_scheduled_task(task_id: int) -> None:
                 return
 
             if task.task_type == "suite" and task.suite_id:
-                from .crud import get_test_suite
                 suite = await get_test_suite(db, task.suite_id)
                 if suite:
                     await run_suite_execution(async_session, suite)
 
-            from datetime import datetime, timezone
             task.last_executed_at = datetime.now(timezone.utc)
             await db.flush()
 
@@ -50,8 +48,6 @@ async def execute_scheduled_task(task_id: int) -> None:
 
 async def load_scheduled_tasks() -> list[ApiScheduledTask]:
     """应用启动时从 DB 加载所有 active 定时任务并注册到 APScheduler"""
-    from .crud import get_all_active_tasks
-
     try:
         async with async_session() as db:
             tasks = await get_all_active_tasks(db)
@@ -86,8 +82,6 @@ async def load_scheduled_tasks() -> list[ApiScheduledTask]:
 
 async def register_scheduled_task(task_id: int) -> bool:
     """注册单个定时任务（创建或恢复时调用）"""
-    from .crud import get_scheduled_task
-
     try:
         async with async_session() as db:
             task = await get_scheduled_task(db, task_id)

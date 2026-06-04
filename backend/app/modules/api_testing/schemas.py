@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
@@ -310,8 +308,8 @@ class HistoryBatchDelete(BaseModel):
 
 
 class HistoryClearRequest(BaseModel):
-    """清空项目历史"""
-    project_id: int
+    """清空项目历史（project_id 为 0 或 None 时清空全部）"""
+    project_id: int | None = None
 
 
 # ====== 定时任务 ======

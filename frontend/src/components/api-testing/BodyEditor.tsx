@@ -1,6 +1,7 @@
 'use client';
 
-import { Select, Input, Tabs } from 'antd';
+import { Button, Input, Select } from 'antd';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 
 interface BodyEditorProps {
   bodyType: string;
@@ -33,8 +34,31 @@ export default function BodyEditor({
   );
 
   const renderFormDataEditor = () => {
-    const entries = body && typeof body === 'object' && !Array.isArray(body)
+    const entries: [string, unknown][] = body && typeof body === 'object' && !Array.isArray(body)
       ? Object.entries(body) : [];
+
+    const updateEntry = (idx: number, field: 'key' | 'value', val: string) => {
+      const list = entries.map(([k, v], i) => {
+        if (i !== idx) return [k, v] as [string, unknown];
+        if (field === 'key') return [val, v] as [string, unknown];
+        return [k, val] as [string, unknown];
+      });
+      const result: Record<string, string> = {};
+      list.forEach(([k, v]) => { if (k) result[k] = String(v || ''); });
+      onBodyChange(result);
+    };
+
+    const addEntry = () => {
+      const result = { ...(body as Record<string, unknown> || {}), '': '' };
+      onBodyChange(result);
+    };
+
+    const removeEntry = (idx: number) => {
+      const list = entries.filter((_, i) => i !== idx);
+      const result: Record<string, string> = {};
+      list.forEach(([k, v]) => { if (k) result[k] = String(v || ''); });
+      onBodyChange(result);
+    };
 
     return (
       <div>
@@ -42,6 +66,7 @@ export default function BodyEditor({
           <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
             <Input
               value={key}
+              onChange={(e) => updateEntry(idx, 'key', e.target.value)}
               placeholder="字段名"
               disabled={disabled}
               style={{ width: 200 }}
@@ -49,30 +74,32 @@ export default function BodyEditor({
             />
             <Input
               value={String(value || '')}
+              onChange={(e) => updateEntry(idx, 'value', e.target.value)}
               placeholder="值"
               disabled={disabled}
               style={{ flex: 1 }}
               size="small"
             />
+            {!disabled && (
+              <Button type="text" danger size="small" icon={<MinusCircleOutlined />} onClick={() => removeEntry(idx)} />
+            )}
           </div>
         ))}
-        {entries.length === 0 && (
-          <Input.TextArea
-            rows={4}
-            placeholder="form-data 格式，每行: 字段名=值"
-            disabled={disabled}
-          />
+        {!disabled && (
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addEntry} size="small" style={{ marginTop: 4 }}>
+            添加字段
+          </Button>
         )}
       </div>
     );
   };
 
-  const tabItems = [
-    { key: 'none', label: '无', children: <div style={{ color: '#999', padding: 20 }}>无请求体</div> },
-    { key: 'json', label: 'JSON', children: renderJsonEditor() },
-    { key: 'form-data', label: 'FormData', children: renderFormDataEditor() },
-    { key: 'x-www-form-urlencoded', label: 'URL编码', children: renderFormDataEditor() },
-  ];
+  const editors: Record<string, () => React.ReactNode> = {
+    none: () => <div style={{ color: '#999', padding: 20 }}>无请求体</div>,
+    json: renderJsonEditor,
+    'form-data': renderFormDataEditor,
+    'x-www-form-urlencoded': renderFormDataEditor,
+  };
 
   return (
     <div>
@@ -89,7 +116,9 @@ export default function BodyEditor({
           { value: 'x-www-form-urlencoded', label: 'x-www-form-urlencoded' },
         ]}
       />
-      {tabItems.find((t) => t.key === (bodyType || 'none'))?.children || renderJsonEditor()}
+      <div style={{ marginTop: 8 }}>
+        {(editors[bodyType || 'none'] || renderJsonEditor)()}
+      </div>
     </div>
   );
 }

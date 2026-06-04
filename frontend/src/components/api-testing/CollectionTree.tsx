@@ -125,7 +125,8 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
         { key: 'add', icon: <PlusOutlined />, label: '新建子集合', onClick: () => handleCreate(nodeId) },
         { key: 'rename', icon: <EditOutlined />, label: '重命名', onClick: () => {
           const node = findNode(treeData, `collection-${nodeId}`);
-          setRenameModal({ id: nodeId, name: node?.title?.toString() || '' });
+          const nodeData = (node as any)?.data;
+          setRenameModal({ id: nodeId, name: nodeData?.name || '' });
         }},
         { type: 'divider' as const },
         { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => handleDelete(nodeId) },
