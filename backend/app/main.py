@@ -9,7 +9,13 @@ from app.config import settings
 from app.database import engine
 from app.core.scheduler import start_scheduler, shutdown_scheduler
 from app.modules.auth.api import router as auth_router
+from app.modules.documents.api import router as documents_router
 from app.modules.projects.api import router as projects_router
+from app.modules.test_points.api import router as test_points_router
+from app.modules.test_cases.api import router as test_cases_router
+from app.modules.task_batches.api import router as batches_router
+from app.modules.knowledge_bases.api import router as knowledge_bases_router
+from app.modules.settings.api import router as settings_router
 
 
 @asynccontextmanager
@@ -31,10 +37,13 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-# CORS 配置（与 Django corsheaders allow_all_origins 兼容）
+# CORS 配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,3 +57,9 @@ app.mount("/media", StaticFiles(directory=str(media_path)), name="media")
 # 注册路由
 app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(projects_router, prefix=settings.API_PREFIX)
+app.include_router(documents_router, prefix=settings.API_PREFIX)
+app.include_router(test_points_router, prefix=settings.API_PREFIX)
+app.include_router(test_cases_router, prefix=settings.API_PREFIX)
+app.include_router(batches_router, prefix=settings.API_PREFIX)
+app.include_router(knowledge_bases_router, prefix=settings.API_PREFIX)
+app.include_router(settings_router, prefix=settings.API_PREFIX)

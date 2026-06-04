@@ -22,6 +22,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.database import Base
 from app.modules.projects.models import Project  # noqa: F401
 from app.modules.auth.models import User, RefreshTokenBlacklist  # noqa: F401
+from app.modules.documents.models import Document  # noqa: F401
+from app.modules.test_points.models import TestPoint  # noqa: F401
+from app.modules.test_cases.models import TestCase  # noqa: F401
+from app.modules.task_batches.models import TaskBatch  # noqa: F401
+from app.modules.knowledge_bases.models import KnowledgeBase, KnowledgeDocument  # noqa: F401
+from app.modules.settings.models import SystemSettings  # noqa: F401
 
 target_metadata = Base.metadata
 

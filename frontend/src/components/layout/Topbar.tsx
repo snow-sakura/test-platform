@@ -8,7 +8,6 @@ import {
   MenuUnfoldOutlined,
   UserOutlined,
   LogoutOutlined,
-  SettingOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '@/stores/app-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -40,12 +39,21 @@ export default function Topbar() {
 
   if (isNoLayout) return null;
 
+  // 面包屑路径 → i18n key 映射（URL 段名可能与 i18n key 不同）
+  const breadcrumbKeyMap: Record<string, string> = {
+    home: 'nav.home',
+    projects: 'nav.projects',
+    settings: 'nav.configuration',
+    profile: 'auth.profile',
+  };
+
   const pathSegments = pathname.split('/').filter(Boolean).slice(1);
 
   const breadcrumbItems = [
-    { title: 'TestHub' },
+    { title: 'TestPlate' },
     ...pathSegments.map((seg) => {
-      const label = t(`nav.${seg}` as any, { fallback: seg });
+      const key = breadcrumbKeyMap[seg];
+      const label = key ? t(key as any) : seg;
       return { title: label };
     }),
   ];
@@ -93,7 +101,10 @@ export default function Topbar() {
           value={language}
           onChange={(val) => {
             setLanguage(val);
-            router.refresh();
+            // 切换到对应语言的 URL 前缀，触发 next-intl middleware 加载对应 messages
+            const segments = pathname.split('/').filter(Boolean);
+            segments[0] = val;
+            router.push('/' + segments.join('/'));
           }}
           style={{ width: 100 }}
           options={Object.entries(localeMap).map(([value, label]) => ({ value, label }))}

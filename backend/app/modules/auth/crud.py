@@ -81,7 +81,7 @@ async def create_user(db: AsyncSession, username: str, email: str, password: str
         **extra,
     )
     db.add(user)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 
@@ -91,7 +91,7 @@ async def update_user(db: AsyncSession, user: User, data: dict) -> User:
     for key, value in data.items():
         if value is not None:
             setattr(user, key, value)
-    await db.commit()
+    await db.flush()
     await db.refresh(user)
     return user
 
@@ -116,4 +116,4 @@ async def blacklist_token(db: AsyncSession, token: str, expired_at: datetime):
     """将令牌加入黑名单"""
     entry = RefreshTokenBlacklist(token=token, expired_at=expired_at)
     db.add(entry)
-    await db.commit()
+    await db.flush()

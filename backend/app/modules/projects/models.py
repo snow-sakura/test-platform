@@ -2,7 +2,7 @@ import enum
 from datetime import date, datetime
 
 from sqlalchemy import DateTime, Enum, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -36,6 +36,20 @@ class Project(Base):
     )
     start_date: Mapped[date | None] = mapped_column(nullable=True, comment="开始日期")
     end_date: Mapped[date | None] = mapped_column(nullable=True, comment="结束日期")
+    # 关联关系
+    documents: Mapped[list["Document"]] = relationship(
+        "Document", back_populates="project", cascade="all, delete-orphan"
+    )
+    test_points: Mapped[list["TestPoint"]] = relationship(
+        "TestPoint", back_populates="project", cascade="all, delete-orphan"
+    )
+    test_cases: Mapped[list["TestCase"]] = relationship(
+        "TestCase", back_populates="project", cascade="all, delete-orphan"
+    )
+    batches: Mapped[list["TaskBatch"]] = relationship(
+        "TaskBatch", back_populates="project", cascade="all, delete-orphan"
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         server_default=func.now(),

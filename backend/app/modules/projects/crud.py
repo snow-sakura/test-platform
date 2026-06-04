@@ -32,7 +32,7 @@ async def create_project(db: AsyncSession, data: ProjectCreate) -> Project:
     """创建项目"""
     project = Project(**data.model_dump())
     db.add(project)
-    await db.commit()
+    await db.flush()
     await db.refresh(project)
     return project
 
@@ -42,7 +42,7 @@ async def update_project(db: AsyncSession, project: Project, data: ProjectUpdate
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(project, field, value)
-    await db.commit()
+    await db.flush()
     await db.refresh(project)
     return project
 
@@ -50,4 +50,4 @@ async def update_project(db: AsyncSession, project: Project, data: ProjectUpdate
 async def delete_project(db: AsyncSession, project: Project) -> None:
     """删除项目"""
     await db.delete(project)
-    await db.commit()
+    await db.flush()

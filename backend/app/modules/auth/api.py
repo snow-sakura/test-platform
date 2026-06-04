@@ -12,8 +12,11 @@ from app.modules.auth.crud import (
     create_user,
     decode_token,
     get_user_by_email,
+    get_user_by_id,
     get_user_by_username,
     get_users,
+    hash_password,
+    is_token_blacklisted,
     update_user,
     verify_password,
 )
@@ -142,7 +145,6 @@ async def refresh_token(
         )
 
     # 检查是否在黑名单中
-    from app.modules.auth.crud import is_token_blacklisted
     if await is_token_blacklisted(db, data.refresh_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -154,13 +156,24 @@ async def refresh_token(
     await blacklist_token(db, data.refresh_token, expired_at)
 
     # 生成新令牌
-    user_id = payload["sub"]
-    new_access_token = create_access_token({"sub": str(user_id)})
-    new_refresh_token = create_refresh_token({"sub": str(user_id)})
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的令牌载荷",
+        )
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的令牌载荷",
+        )
+    new_access_token = create_access_token({"sub": user_id_str})
+    new_refresh_token = create_refresh_token({"sub": user_id_str})
 
     # 获取用户信息
-    from app.modules.auth.crud import get_user_by_id
-    user = await get_user_by_id(db, int(user_id))
+    user = await get_user_by_id(db, user_id)
 
     return TokenResponse(
         access_token=new_access_token,
@@ -193,8 +206,6 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
 ):
     """修改密码"""
-    from app.modules.auth.crud import hash_password, verify_password
-
     if not verify_password(data.old_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -202,13 +213,14 @@ async def change_password(
         )
 
     current_user.hashed_password = hash_password(data.new_password)
-    await db.commit()
+    await db.flush()
     return {"detail": "密码已修改"}
 
 
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """获取用户列表（供其他模块选取指派人/评审人）"""
+    """获取用户列表（需登录，供其他模块选取指派人/评审人）"""
     return await get_users(db)

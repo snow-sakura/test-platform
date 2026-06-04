@@ -1,24 +1,26 @@
-# TestHub 技术栈文档
+# TestPlate 技术栈文档
 
-## 总体技术架构
+## 实际架构（2026-06-04）
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     前端 (Vue 3)                         │
-│  Vue 3 + Vite + Element Plus + Pinia + Vue Router        │
-│  Axios + ECharts + Monaco Editor + vue-i18n              │
+│                  前端 (Next.js 14)                        │
+│  React + Ant Design 5 + Zustand + next-intl              │
+│  Axios + TypeScript                                      │
 └─────────────────────┬───────────────────────────────────┘
-                      │ HTTP/SSE/WebSocket
+                      │ HTTP (REST API)
 ┌─────────────────────┴───────────────────────────────────┐
-│                   后端 (Django 4.2)                       │
-│  Django REST Framework + JWT + Celery + Channels         │
-│  httpx + Selenium + Playwright + Airtest                 │
-│  browser-use + LangChain + OpenAI SDK                    │
+│                后端 (FastAPI / Python)                    │
+│  SQLAlchemy 2.0 (async) + Alembic + asyncmy              │
+│  LiteLLM (OpenAI/DeepSeek/Kimi/Claude 统一接口)           │
+│  ChromaDB (RAG 向量库) + PyMuPDF + Tesseract OCR         │
+│  httpx (飞书通知) + openpyxl (Excel导出)                  │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─────────────────────┴───────────────────────────────────┐
 │                   基础设施                                │
-│  MySQL 8.0 + Redis + Celery(RabbitMQ/Redis)              │
+│  MySQL 8.0+ + ChromaDB (本地持久化)                       │
+│  无 Celery/Redis（FastAPI BackgroundTasks 替代）          │
 └─────────────────────────────────────────────────────────┘
 ```
 

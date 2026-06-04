@@ -13,8 +13,8 @@ const antdLocales: Record<string, any> = {
 };
 
 export const metadata: Metadata = {
-  title: 'TestHub',
-  description: 'AI 驱动的全栈测试管理平台',
+  title: 'TestPlate',
+  description: 'TestPlate — AI 驱动的全栈测试管理平台',
 };
 
 export default async function LocaleLayout({

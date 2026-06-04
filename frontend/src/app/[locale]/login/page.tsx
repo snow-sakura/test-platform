@@ -36,7 +36,7 @@ export default function LoginPage() {
     }}>
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={3}>TestHub</Title>
+          <Title level={3}>TestPlate</Title>
           <Text type="secondary">{t('loginTitle')}</Text>
         </div>
         <Form

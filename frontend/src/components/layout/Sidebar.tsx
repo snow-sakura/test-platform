@@ -28,19 +28,21 @@ export default function Sidebar() {
     { key: '/home', icon: <HomeOutlined />, label: t('nav.home') },
     { key: '/projects', icon: <FolderOutlined />, label: t('nav.projects') },
     { type: 'divider' } as any,
-    { key: 'ai_gen', icon: <ThunderboltOutlined />, label: t('nav.aiGeneration'), disabled: true },
+    { key: 'ai_generation', icon: <ThunderboltOutlined />, label: t('nav.aiGeneration') },
     { key: 'api_test', icon: <ApiOutlined />, label: t('nav.apiTesting'), disabled: true },
     { key: 'ui_auto', icon: <MonitorOutlined />, label: t('nav.uiAutomation'), disabled: true },
     { key: 'data_factory', icon: <DatabaseOutlined />, label: t('nav.dataFactory'), disabled: true },
     { key: 'app_auto', icon: <MobileOutlined />, label: t('nav.appAutomation'), disabled: true },
     { key: 'ai_intel', icon: <RobotOutlined />, label: t('nav.aiIntelligent'), disabled: true },
     { key: 'ai_review', icon: <MessageOutlined />, label: t('nav.aiReviewer'), disabled: true },
-    { key: 'config', icon: <SettingOutlined />, label: t('nav.configuration'), disabled: true },
+    { key: '/settings', icon: <SettingOutlined />, label: t('nav.configuration') },
   ];
 
   const onClick: MenuProps['onClick'] = (info) => {
     if (info.key.startsWith('/')) {
       router.push(info.key);
+    } else if (info.key === 'ai_generation') {
+      router.push('/projects');
     } else {
       message.info(t('common.comingSoon'));
     }
@@ -59,7 +61,7 @@ export default function Sidebar() {
           fontSize: 18,
         }}
       >
-        TestHub
+        TestPlate
       </div>
       <Menu
         theme="dark"

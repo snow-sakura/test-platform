@@ -1,4 +1,4 @@
-# TestHub — AI 驱动的全栈测试管理平台
+# TestPlate — AI 驱动的全栈测试管理平台
 
 ![Tech Stack](https://img.shields.io/badge/Backend-FastAPI%200.136+-009688?logo=fastapi)
 ![Tech Stack](https://img.shields.io/badge/Frontend-Next.js%2014-000000?logo=nextdotjs)
@@ -7,7 +7,7 @@
 
 ## 项目简介
 
-**TestHub** 是一个 AI 驱动的全栈测试管理平台，覆盖从测试用例管理、接口测试、UI 自动化到 AI 智能测试的全流程。项目基于 `ai_doc/` 需求文档迭代开发，采用现代化异步架构。
+**TestPlate** 是一个 AI 驱动的全栈测试管理平台，覆盖从测试用例管理、接口测试、UI 自动化到 AI 智能测试的全流程。项目基于 `ai_doc/` 需求文档迭代开发，采用现代化异步架构。
 
 ### 技术栈
 

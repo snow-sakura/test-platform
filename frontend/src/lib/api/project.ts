@@ -28,21 +28,21 @@ export interface PaginatedResponse<T> {
 }
 
 export function getProjects(params?: ProjectListParams) {
-  return request.get<PaginatedResponse<Project>>('/api/projects/', { params });
+  return request.get<PaginatedResponse<Project>>('/api/projects', { params });
 }
 
 export function getProject(id: number) {
-  return request.get<Project>(`/api/projects/${id}/`);
+  return request.get<Project>(`/api/projects/${id}`);
 }
 
 export function createProject(data: Partial<Project>) {
-  return request.post<Project>('/api/projects/', data);
+  return request.post<Project>('/api/projects', data);
 }
 
 export function updateProject(id: number, data: Partial<Project>) {
-  return request.put<Project>(`/api/projects/${id}/`, data);
+  return request.put<Project>(`/api/projects/${id}`, data);
 }
 
 export function deleteProject(id: number) {
-  return request.delete(`/api/projects/${id}/`);
+  return request.delete(`/api/projects/${id}`);
 }

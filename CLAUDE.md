@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-TestHub 是一个 AI 驱动的全栈测试管理平台。当前版本 V1.0（基础平台），已完成首页门户 + 项目管理 CRUD。
+TestPlate 是一个 AI 驱动的全栈测试管理平台。当前版本 V3.0（知识库 & 系统设置），已完成用户认证、项目管理、文档管理、AI 测试管理、知识库和系统设置。
 
 - **后端**：FastAPI + SQLAlchemy 2.0 (async) + Alembic + asyncmy + MySQL
 - **前端**：Next.js 14 (App Router) + Ant Design 5 + Zustand 4 + next-intl 3 + Axios + TypeScript
@@ -46,7 +46,24 @@ test-platform/
 │   ├── app/database.py    # async engine + session + get_db 依赖
 │   ├── app/pagination.py  # DRF 兼容分页工具（PaginatedResponse）
 │   ├── app/modules/       # 业务模块
-│   │   └── projects/      # ── 项目管理（models/crud/schemas/api/filters）
+│   │   ├── auth/          # ── 用户认证（JWT + bcrypt）
+│   │   ├── projects/      # ── 项目管理（models/crud/schemas/api/filters）
+│   │   ├── documents/     # ── 文档管理（上传/解析/CRUD）
+│   │   ├── test_points/   # ── 测试点管理
+│   │   ├── test_cases/    # ── 测试用例管理
+│   │   ├── task_batches/  # ── 异步任务批次
+│   │   ├── knowledge_bases/ # ── 知识库（ChromaDB RAG）
+│   │   └── settings/      # ── 系统设置（热更新）
+│   ├── app/services/      # 业务服务层
+│   │   ├── document_parser.py  # 多格式文档解析（PDF/DOCX/MD/YAML/CSV）
+│   │   ├── llm_service.py      # LiteLLM 统一大模型接口
+│   │   ├── task_processor.py   # 异步任务处理（提取测试点/生成用例）
+│   │   ├── excel_exporter.py   # Excel 导出（测试用例）
+│   │   ├── config_sync.py      # 运行时配置热更新
+│   │   ├── rag_service.py      # ChromaDB 向量检索
+│   │   └── feishu_service.py   # 飞书机器人通知
+│   ├── app/core/          # 通用基础设施
+│   ├── uploads/           # 上传文档存储
 │   ├── alembic/           # 数据库迁移
 │   ├── .env               # DATABASE_URL（MySQL 连接）
 │   └── run.py             # uvicorn 启动入口
@@ -55,10 +72,11 @@ test-platform/
 │       ├── app/[locale]/  # 国际化路由页面
 │       ├── lib/           # Axios 实例 + API 封装
 │       ├── stores/        # Zustand 状态
-│       └── components/    # Layout + 业务组件
+│       └── components/    # Layout + 业务组件 + AI 功能组件
 ├── ai_doc/                # 需求文档（18 功能模块 × 7 迭代版本）
 ├── todo.md                # 版本路线 + 开发日志
-└── CLAUDE.md
+├── CLAUDE.md
+└── README.md
 ```
 
 ## 后端核心模式
@@ -124,7 +142,7 @@ def model_post_init(self, __context) -> None:
 
 ## 数据库 & 迁移
 
-- **数据库**：MySQL 8.0+，`testhub`，utf8mb4，连接信息在 `.env` 的 `DATABASE_URL` 中
+- **数据库**：MySQL 8.0+，`testplate`，utf8mb4，连接信息在 `.env` 的 `DATABASE_URL` 中
 - **Alembic**：同步驱动用 `pymysql`，异步驱动用 `asyncmy`
 - **迁移流程**：改模型 → `alembic revision --autogenerate -m "xx"` → 检查生成的脚本 → `alembic upgrade head`
 - **新模型注册**：在 `alembic/env.py` 顶部 `import` 模型类即可被 autogenerate 检测到

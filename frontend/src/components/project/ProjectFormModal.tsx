@@ -49,7 +49,7 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
         await createProject(data);
         message.success(t('common.createSuccess'));
       }
-      onSuccess();
+      await onSuccess();
       onClose();
     } catch (err) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
@@ -62,7 +62,7 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
       open={open}
       onOk={handleOk}
       onCancel={onClose}
-      destroyOnHidden
+      destroyOnClose
     >
       <Form form={form} layout="vertical" initialValues={{ status: 'active' }}>
         <Form.Item

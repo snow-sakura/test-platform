@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.pagination import PageParams, PaginatedResponse
+from app.modules.auth.dependencies import get_current_user
 
 from .crud import (
     create_project,
@@ -13,7 +14,7 @@ from .crud import (
 )
 from .schemas import ProjectCreate, ProjectResponse, ProjectUpdate
 
-router = APIRouter(tags=["projects"])
+router = APIRouter(dependencies=[Depends(get_current_user)], tags=["projects"])
 
 
 @router.get("/projects", response_model=PaginatedResponse[ProjectResponse])
