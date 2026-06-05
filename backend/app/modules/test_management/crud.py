@@ -39,6 +39,27 @@ async def create_case(db: AsyncSession, project_id: int, author_id: int, data: d
     return case
 
 
+async def batch_import_cases(db: AsyncSession, project_id: int, author_id: int,
+                              cases_data: list[dict]) -> list[TestManagementCase]:
+    """批量导入测试用例（一次性 flush，减少数据库往返）"""
+    all_steps = []
+    cases = []
+    for data in cases_data:
+        steps_data = data.pop("steps", [])
+        case = TestManagementCase(project_id=project_id, author_id=author_id, **data)
+        db.add(case)
+        cases.append(case)
+        all_steps.append(steps_data)
+
+    await db.flush()  # 一次 flush 获取所有 case ID
+
+    for case, steps_data in zip(cases, all_steps):
+        for sd in steps_data:
+            db.add(TestManagementCaseStep(case_id=case.id, **sd))
+    await db.flush()
+    return cases
+
+
 async def get_case(db: AsyncSession, case_id: int) -> TestManagementCase | None:
     """获取测试用例详情（含步骤/评论/附件）"""
     result = await db.execute(
@@ -703,6 +724,155 @@ async def get_test_management_dashboard_stats(
         "pass_rate": pass_rate,
         "today_executions": today_executions,
     }
+
+
+# ==============================
+# 仪表盘 — 缺陷分布
+# ==============================
+
+
+async def get_defect_distribution(
+    db: AsyncSession,
+    project_id: int | None = None,
+) -> dict:
+    """缺陷分布统计：统计有缺陷记录的用例，按用例优先级分组"""
+    from .models import TestManagementCase
+
+    query = (
+        select(
+            func.count(TestManagementRunCase.id).label("cnt"),
+            TestManagementCase.priority,
+        )
+        .join(TestManagementCase, TestManagementRunCase.case_id == TestManagementCase.id)
+        .where(TestManagementRunCase.defects.isnot(None))
+        .where(TestManagementRunCase.defects != "")
+    )
+
+    if project_id:
+        query = query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)
+        query = query.join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)
+        query = query.where(TestManagementPlan.project_id == project_id)
+
+    query = query.group_by(TestManagementCase.priority)
+    result = await db.execute(query)
+
+    distribution = {"high": 0, "medium": 0, "low": 0}
+    for row in result.all():
+        key = row.priority.lower() if row.priority else "medium"
+        distribution[key] = row.cnt
+    return distribution
+
+
+# ==============================
+# 仪表盘 — AI 效能对比
+# ==============================
+
+
+async def get_ai_efficiency(
+    db: AsyncSession,
+    project_id: int | None = None,
+    months: int = 12,
+) -> list[dict]:
+    """AI 生成 vs 人工创建用例的效能对比（按月聚合）"""
+    from datetime import date
+    from sqlalchemy import extract
+    from app.modules.requirement_analysis.models import GeneratedTestCase as GeneratedTestCaseModel
+
+    now = date.today()
+    start_date = date(now.year - 1 if now.month < months else now.year, max(1, now.month - months + 1), 1)
+
+    # 手动处理月份列表
+    periods = []
+    y, m = start_date.year, start_date.month
+    for _ in range(months):
+        periods.append(f"{y}-{m:02d}")
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+        if y > now.year or (y == now.year and m > now.month):
+            break
+
+    # AI 生成的用例数（按月）
+    GT = GeneratedTestCaseModel
+    ai_query = (
+        select(
+            extract("year", GT.created_at).label("yr"),
+            extract("month", GT.created_at).label("mo"),
+            func.count(GT.id).label("cnt"),
+        )
+        .where(GT.created_at >= start_date)
+        .group_by("yr", "mo")
+        .order_by("yr", "mo")
+    )
+    ai_result = await db.execute(ai_query)
+    ai_map = {}
+    for row in ai_result.all():
+        key = f"{int(row.yr)}-{int(row.mo):02d}"
+        ai_map[key] = row.cnt
+
+    # 人工创建的测试用例数（按月）
+    manual_query = (
+        select(
+            extract("year", TestManagementCase.created_at).label("yr"),
+            extract("month", TestManagementCase.created_at).label("mo"),
+            func.count(TestManagementCase.id).label("cnt"),
+        )
+        .where(TestManagementCase.created_at >= start_date)
+    )
+    if project_id:
+        manual_query = manual_query.where(TestManagementCase.project_id == project_id)
+    manual_query = manual_query.group_by("yr", "mo").order_by("yr", "mo")
+    manual_result = await db.execute(manual_query)
+    manual_map = {}
+    for row in manual_result.all():
+        key = f"{int(row.yr)}-{int(row.mo):02d}"
+        manual_map[key] = row.cnt
+
+    data = []
+    for p in periods:
+        data.append({
+            "period": p,
+            "ai_generated": ai_map.get(p, 0),
+            "manual": manual_map.get(p, 0),
+        })
+    return data
+
+
+# ==============================
+# 仪表盘 — 团队工作量
+# ==============================
+
+
+async def get_team_workload(
+    db: AsyncSession,
+    project_id: int | None = None,
+) -> list[dict]:
+    """团队工作量统计：按执行人统计执行的用例数"""
+    from app.modules.auth.models import User
+
+    query = (
+        select(
+            User.id.label("user_id"),
+            User.username,
+            func.count(TestManagementRunCase.id).label("case_count"),
+        )
+        .join(User, TestManagementRunCase.executed_by == User.id)
+        .where(TestManagementRunCase.status.in_(["passed", "failed", "blocked"]))
+    )
+
+    if project_id:
+        query = query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)
+        query = query.join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)
+        query = query.where(TestManagementPlan.project_id == project_id)
+
+    query = query.group_by(User.id, User.username).order_by(func.count(TestManagementRunCase.id).desc())
+    result = await db.execute(query)
+
+    return [
+        {"user_id": row.user_id, "username": row.username, "case_count": row.case_count}
+        for row in result.all()
+    ]
 
 
 # ==============================

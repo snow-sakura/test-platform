@@ -49,9 +49,9 @@ export default function DataFactoryPage() {
   ];
 
   useEffect(() => {
-    getDataFactoryCategories().then((r) => setCategories(r.data || [])).catch(() => {});
-    getDataFactoryStats().then((r) => setStats(r.data)).catch(() => {});
-    getVariableFunctions().then((r) => setVariableFunctions(r.data || [])).catch(() => {});
+    getDataFactoryCategories().then((r) => setCategories(r.data || [])).catch((e) => console.warn('加载分类列表失败', e));
+    getDataFactoryStats().then((r) => setStats(r.data)).catch((e) => console.warn('加载统计失败', e));
+    getVariableFunctions().then((r) => setVariableFunctions(r.data || [])).catch((e) => console.warn('加载变量函数失败', e));
     loadRecords();
   }, []);
 

@@ -23,23 +23,25 @@ router = APIRouter(dependencies=[Depends(get_current_user)], tags=["dashboard"])
 async def get_module_status(db: AsyncSession = Depends(get_db), _=Depends(require_permission("dashboard.view"))):
     """获取各模块配置状态（用于首页卡片状态指示）"""
     # 并行查询各模块是否有数据
-    project_count = (await db.execute(select(func.count(Project.id)))).scalar() or 0
-    api_project_count = (await db.execute(select(func.count(ApiProject.id)))).scalar() or 0
-    ui_project_count = (await db.execute(select(func.count(UIProject.id)))).scalar() or 0
-    test_case_count = (await db.execute(select(func.count(TestCase.id)))).scalar() or 0
+    import asyncio
+    async def _count(stmt):
+        return (await db.execute(stmt)).scalar() or 0
 
-    # AI 模型配置（活跃的 writer 模型）
-    ai_model_active = (await db.execute(
-        select(func.count(AIModelConfig.id))
-        .where(AIModelConfig.is_active == True)
-        .where(AIModelConfig.role == "testcase_writer")
-    )).scalar() or 0
-
-    # Dify 配置
-    dify_active = (await db.execute(
-        select(func.count(DifyConfig.id))
-        .where(DifyConfig.is_active == True)
-    )).scalar() or 0
+    project_count, api_project_count, ui_project_count, test_case_count, ai_model_active, dify_active = await asyncio.gather(
+        _count(select(func.count(Project.id))),
+        _count(select(func.count(ApiProject.id))),
+        _count(select(func.count(UIProject.id))),
+        _count(select(func.count(TestCase.id))),
+        _count(
+            select(func.count(AIModelConfig.id))
+            .where(AIModelConfig.is_active == True)
+            .where(AIModelConfig.role == "testcase_writer")
+        ),
+        _count(
+            select(func.count(DifyConfig.id))
+            .where(DifyConfig.is_active == True)
+        ),
+    )
 
     return {
         "projects": {

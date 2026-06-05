@@ -42,7 +42,7 @@ export default function BatchTracker({ projectId }: Props) {
   const loadBatches = async () => {
     try {
       const res = await getProjectBatches(projectId);
-      const data = res.data?.results ?? res.data;
+      const data = res.data?.results ?? [];
       setBatches(data);
 
       // 检测状态变化并通知

@@ -39,7 +39,7 @@ class KnowledgeDocument(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="文档 ID")
     knowledge_base_id: Mapped[int] = mapped_column(
-        ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, comment="所属知识库 ID"
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True, comment="所属知识库 ID"
     )
     filename: Mapped[str] = mapped_column(String(500), nullable=False, comment="文件名")
     file_path: Mapped[str] = mapped_column(String(1000), nullable=False, comment="存储路径")

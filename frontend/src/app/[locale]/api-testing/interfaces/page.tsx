@@ -24,7 +24,7 @@ export default function InterfacesPage() {
       if (res.data.results.length > 0 && !selectedProjectId) {
         setSelectedProjectId(res.data.results[0].id);
       }
-    }).catch(() => {});
+    }).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   const handleCreateRequest = async () => {

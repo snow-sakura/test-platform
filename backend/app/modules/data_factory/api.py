@@ -67,7 +67,9 @@ async def execute_tool_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"工具执行失败: {e}")
+        import logging
+        logging.getLogger(__name__).error("工具执行异常: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="工具执行失败")
 
     # 获取工具分类
     category = ""
@@ -220,7 +222,9 @@ async def download_static_file(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"工具执行失败: {e}")
+        import logging
+        logging.getLogger(__name__).error("工具执行异常: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="工具执行失败")
 
     # 尝试解码为图片文件
     try:

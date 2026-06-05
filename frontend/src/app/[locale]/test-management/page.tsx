@@ -10,7 +10,7 @@ export default function TestManagementPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    getTestManagementDashboardStats().then((res) => setStats(res.data)).catch(() => {});
+    getTestManagementDashboardStats().then((res) => setStats(res.data)).catch((e) => console.warn('加载仪表盘统计失败', e));
   }, []);
 
   return (

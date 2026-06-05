@@ -53,7 +53,7 @@ export default function UiScriptsPage() {
   };
 
   useEffect(() => {
-    getUiProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch(() => {});
+    getUiProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   useEffect(() => { loadScripts(); }, [selectedProjectId]);
@@ -233,7 +233,7 @@ export default function UiScriptsPage() {
               </Card>
             )}
             <Typography.Text strong>步骤执行详情</Typography.Text>
-            <Table dataSource={execResult.steps} rowKey="step_number" size="small" pagination={false}
+            <Table dataSource={execResult.steps || []} rowKey="step_number" size="small" pagination={false}
               columns={[
                 { title: '#', dataIndex: 'step_number', width: 50 },
                 { title: '操作', dataIndex: 'action', width: 80 },

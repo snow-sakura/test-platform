@@ -31,7 +31,7 @@ export default function AutomationPage() {
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results);
-    }).catch(() => {});
+    }).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   const fetchSuites = useCallback(() => {
@@ -195,7 +195,7 @@ function SuiteRequestItem({ requestId, result, onRemove }: {
   const [req, setReq] = useState<ApiRequest | null>(null);
 
   useEffect(() => {
-    getRequest(requestId).then((res) => setReq(res.data)).catch(() => {});
+    getRequest(requestId).then((res) => setReq(res.data)).catch((e) => console.warn('加载请求详情失败', e));
   }, [requestId]);
 
   return (

@@ -78,7 +78,7 @@ export default function SuiteDetailPage() {
         <p style={{ color: '#666', marginBottom: 16 }}>{suite.description || '暂无描述'}</p>
 
         <Table
-          rowKey="id" dataSource={suite.cases} pagination={false} size="small"
+          rowKey="id" dataSource={suite.cases || []} pagination={false} size="small"
           locale={{ emptyText: '暂无用例，点击上方"添加用例"按钮添加' }}
           columns={[
             { title: '标题', dataIndex: 'title', ellipsis: true },

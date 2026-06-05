@@ -26,7 +26,7 @@ export default function KnowledgeBases(_props: Props) {
   const fetchKbs = () => {
     setLoading(true);
     getKnowledgeBases()
-      .then((res) => setKbs(res.data?.results ?? res.data))
+      .then((res) => setKbs(res.data?.results ?? []))
       .finally(() => setLoading(false));
   };
 
@@ -66,7 +66,7 @@ export default function KnowledgeBases(_props: Props) {
     if (!kbDocs[kbId]) {
       setDocsLoading((prev) => ({ ...prev, [kbId]: true }));
       getKnowledgeDocuments(kbId)
-        .then((res) => setKbDocs((prev) => ({ ...prev, [kbId]: res.data?.results ?? res.data })))
+        .then((res) => setKbDocs((prev) => ({ ...prev, [kbId]: res.data?.results ?? [] })))
         .finally(() => setDocsLoading((prev) => ({ ...prev, [kbId]: false })));
     }
   };
@@ -76,7 +76,7 @@ export default function KnowledgeBases(_props: Props) {
       await uploadKnowledgeDocument(kbId, file);
       message.success('文档上传成功');
       const res = await getKnowledgeDocuments(kbId);
-      setKbDocs((prev) => ({ ...prev, [kbId]: res.data?.results ?? res.data }));
+      setKbDocs((prev) => ({ ...prev, [kbId]: res.data?.results ?? [] }));
     } catch {
       message.error('上传失败');
     }

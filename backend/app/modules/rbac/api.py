@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -32,18 +33,41 @@ async def list_permissions(db: AsyncSession = Depends(get_db), _=Depends(require
 
 @router.get("/roles", response_model=list[schemas.RoleDetailResponse])
 async def list_roles(db: AsyncSession = Depends(get_db), _=Depends(require_permission("role.view"))):
-    """获取所有角色"""
+    """获取所有角色（批量查询角色权限和用户数，避免 N+1）"""
     roles = await crud.get_roles(db)
+    if not roles:
+        return []
+
+    role_ids = [r.id for r in roles]
+
+    # 批量查询权限 ID（一次性查出所有角色的权限关联）
+    from sqlalchemy import select as sa_select
+    perm_rows = (await db.execute(
+        sa_select(models.RolePermission.role_id, models.RolePermission.permission_id)
+        .where(models.RolePermission.role_id.in_(role_ids))
+    )).all()
+    role_perm_map: dict[int, list[int]] = {rid: [] for rid in role_ids}
+    for row in perm_rows:
+        role_perm_map[row.role_id].append(row.permission_id)
+
+    # 批量查询用户数（GROUP BY role_id）
+    user_count_rows = (await db.execute(
+        sa_select(models.UserRole.role_id, func.count(models.UserRole.id))
+        .where(models.UserRole.role_id.in_(role_ids))
+        .group_by(models.UserRole.role_id)
+    )).all()
+    role_user_count: dict[int, int] = {rid: 0 for rid in role_ids}
+    for row in user_count_rows:
+        role_user_count[row.role_id] = row[1]
+
     result = []
     for r in roles:
-        perm_ids = await crud.get_role_permission_ids(db, r.id)
-        user_count = await crud.get_role_user_count(db, r.id)
-        resp = schemas.RoleDetailResponse(
+        result.append(schemas.RoleDetailResponse(
             id=r.id, name=r.name, description=r.description,
             is_system=r.is_system, created_at=str(r.created_at) if r.created_at else None,
-            permission_ids=perm_ids, user_count=user_count,
-        )
-        result.append(resp)
+            permission_ids=role_perm_map.get(r.id, []),
+            user_count=role_user_count.get(r.id, 0),
+        ))
     return result
 
 
@@ -108,16 +132,29 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_permission("role.assign")),
 ):
-    """获取用户列表（含角色信息，用于角色分配）"""
+    """获取用户列表（含角色信息，批量查询避免 N+1）"""
     users = await crud.get_all_users(db)
+    if not users:
+        return []
+
+    user_ids = [u["id"] for u in users]
+
+    # 一次性查出所有用户的角色关联
+    from sqlalchemy import select as sa_select
+    user_role_rows = (await db.execute(
+        sa_select(models.UserRole.user_id, models.Role.id, models.Role.name)
+        .join(models.Role, models.Role.id == models.UserRole.role_id)
+        .where(models.UserRole.user_id.in_(user_ids))
+    )).all()
+    user_role_map: dict[int, dict] = {uid: {"role_ids": [], "role_names": []} for uid in user_ids}
+    for row in user_role_rows:
+        user_role_map[row.user_id]["role_ids"].append(row.id)
+        user_role_map[row.user_id]["role_names"].append(row.name)
+
     result = []
     for u in users:
-        user_roles = await crud.get_user_roles(db, u["id"])
-        result.append({
-            **u,
-            "role_ids": [r.id for r in user_roles],
-            "role_names": [r.name for r in user_roles],
-        })
+        roles = user_role_map.get(u["id"], {"role_ids": [], "role_names": []})
+        result.append({**u, **roles})
     return result
 
 

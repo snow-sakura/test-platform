@@ -24,7 +24,7 @@ class RequirementDocument(Base):
     content: Mapped[str | None] = mapped_column(Text, nullable=True, comment="提取的文本内容")
     file_type: Mapped[str | None] = mapped_column(String(20), nullable=True, comment="文件类型: pdf/docx/md/txt")
     uploader_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="上传者",
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="上传者", index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), nullable=False, comment="创建时间",
@@ -41,7 +41,7 @@ class RequirementAnalysis(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="分析 ID")
     document_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_documents.id", ondelete="SET NULL"), nullable=True, comment="关联文档",
+        ForeignKey("ra_documents.id", ondelete="SET NULL"), nullable=True, comment="关联文档", index=True
     )
     analysis_text: Mapped[str | None] = mapped_column(Text, nullable=True, comment="直接输入的文本（非文档）")
     status: Mapped[str] = mapped_column(
@@ -68,7 +68,7 @@ class BusinessRequirement(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="需求 ID")
     analysis_id: Mapped[int] = mapped_column(
-        ForeignKey("ra_analyses.id", ondelete="CASCADE"), nullable=False, comment="关联分析",
+        ForeignKey("ra_analyses.id", ondelete="CASCADE"), nullable=False, comment="关联分析", index=True
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False, comment="需求标题")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="需求描述")
@@ -92,10 +92,10 @@ class GeneratedTestCase(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="用例 ID")
     requirement_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_business_requirements.id", ondelete="SET NULL"), nullable=True, comment="关联需求",
+        ForeignKey("ra_business_requirements.id", ondelete="SET NULL"), nullable=True, comment="关联需求", index=True
     )
     task_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_tasks.id", ondelete="SET NULL"), nullable=True, comment="关联生成任务",
+        ForeignKey("ra_tasks.id", ondelete="SET NULL"), nullable=True, comment="关联生成任务", index=True
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False, comment="用例标题")
     scenario: Mapped[str | None] = mapped_column(Text, nullable=True, comment="测试场景")
@@ -201,19 +201,19 @@ class TestCaseGenerationTask(Base):
     )
     mode: Mapped[str] = mapped_column(String(20), default="stream", comment="stream/complete")
     writer_config_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_ai_model_configs.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("ra_ai_model_configs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     reviewer_config_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_ai_model_configs.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("ra_ai_model_configs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     writer_prompt_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_prompt_configs.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("ra_prompt_configs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     reviewer_prompt_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_prompt_configs.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("ra_prompt_configs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     generation_config_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ra_generation_configs.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("ra_generation_configs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     generated_content: Mapped[str | None] = mapped_column(Text, nullable=True, comment="LLM 生成的原始内容")
     review_feedback: Mapped[str | None] = mapped_column(Text, nullable=True, comment="AI 评审反馈")

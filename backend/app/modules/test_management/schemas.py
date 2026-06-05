@@ -514,3 +514,24 @@ class TestManagementDashboardStats(BaseModel):
     my_pending_reviews: int = 0
     pass_rate: float = 0.0
     today_executions: int = 0
+
+
+class DefectDistribution(BaseModel):
+    """缺陷分布统计（按优先级）"""
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+
+
+class AiEfficiencyItem(BaseModel):
+    """AI 效能对比数据项"""
+    period: str
+    ai_generated: int = 0
+    manual: int = 0
+
+
+class TeamWorkloadItem(BaseModel):
+    """团队工作量数据项"""
+    user_id: int
+    username: str
+    case_count: int = 0

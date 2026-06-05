@@ -22,6 +22,7 @@ from .crud import (
     delete_review, delete_review_template, delete_step, delete_suite,
     delete_version, get_case,
     get_case_comment_count, get_case_step_count, get_cases,
+    get_defect_distribution, get_ai_efficiency, get_team_workload,
     get_my_review_tasks, get_plan, get_plans, get_report,
     get_report_template, get_report_templates, get_review,
     get_review_template, get_review_templates,
@@ -39,13 +40,13 @@ from .models import (
     TestManagementRunCase,
 )
 from .schemas import (
-    PlanCreate, PlanResponse, PlanUpdate,
+    AiEfficiencyItem, DefectDistribution, PlanCreate, PlanResponse, PlanUpdate,
     ReportCreate, ReportResponse,
     ReviewCommentCreate, ReviewCommentResponse,
     ReviewCreate, ReviewDetailResponse, ReviewResponse,
     ReviewTemplateCreate, ReviewTemplateResponse, ReportTemplateResponse,
     ReviewUpdate, ReviewAssignersCreate, ReportTemplateUpdate, RunCaseUpdate, RunResponse,
-    TestCaseAttachmentResponse, TestCaseCommentCreate,
+    TeamWorkloadItem, TestCaseAttachmentResponse, TestCaseCommentCreate,
     TestCaseCommentResponse, TestCaseCreate, TestCaseDetailResponse,
     TestCaseListResponse, TestCaseStepResponse, TestCaseUpdate,
     TestManagementDashboardStats, TestSuiteCreate, TestSuiteDetailResponse,
@@ -189,22 +190,55 @@ async def execution_summary(
     """执行汇总统计"""
     from .models import TestManagementRunCase, TestManagementRun, TestManagementPlan
 
-    base_query = select(TestManagementRunCase)
+    base_query = select(TestManagementRunCase.status, func.count().label("cnt"))
     if project_id:
         base_query = base_query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)
         base_query = base_query.join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)
         base_query = base_query.where(TestManagementPlan.project_id == project_id)
 
-    count_query = select(func.count()).select_from(base_query.subquery())
-    total = (await db.execute(count_query)).scalar() or 0
+    total_query = select(func.count()).select_from(base_query.subquery())
+    total = (await db.execute(total_query)).scalar() or 0
 
+    # 单次 GROUP BY 查询替代 4 个独立 COUNT
+    group_query = base_query.group_by(TestManagementRunCase.status)
+    status_rows = (await db.execute(group_query)).all()
     stats = {"total": total, "passed": 0, "failed": 0, "blocked": 0, "untested": 0}
-    for status in ["passed", "failed", "blocked", "untested"]:
-        q = base_query.where(TestManagementRunCase.status == status)
-        cnt = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar() or 0
-        stats[status] = cnt
+    for row in status_rows:
+        if row.status in stats:
+            stats[row.status] = row.cnt
 
     return stats
+
+
+@router.get("/dashboard/defect-distribution", response_model=DefectDistribution)
+async def dashboard_defect_distribution(
+    project_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """缺陷分布统计：按用例优先级统计存在缺陷记录的用例数"""
+    return await get_defect_distribution(db, project_id)
+
+
+@router.get("/dashboard/ai-efficiency", response_model=list[AiEfficiencyItem])
+async def dashboard_ai_efficiency(
+    project_id: int | None = Query(None),
+    months: int = Query(12, ge=1, le=36),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """AI 生成 vs 人工创建用例的效能对比（按月聚合）"""
+    return await get_ai_efficiency(db, project_id, months)
+
+
+@router.get("/dashboard/team-workload", response_model=list[TeamWorkloadItem])
+async def dashboard_team_workload(
+    project_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """团队工作量统计：按执行人统计已执行的用例数"""
+    return await get_team_workload(db, project_id)
 
 
 @router.get("/cases", response_model=dict)
@@ -319,7 +353,9 @@ async def export_cases_excel(
     try:
         excel_data = export_test_cases_excel(cases)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导出失败: {e}")
+        import logging
+        logging.getLogger(__name__).error("导出用例异常: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="导出失败，请稍后重试")
 
     return Response(
         content=excel_data,
@@ -339,7 +375,7 @@ async def import_cases_excel(
     """从 Excel 导入测试用例（含步骤）"""
     from openpyxl import load_workbook
     import io
-    from .crud import create_case
+    from .crud import batch_import_cases
 
     # 校验文件格式
     if not file.filename or not file.filename.endswith(('.xlsx', '.xls')):
@@ -356,6 +392,7 @@ async def import_cases_excel(
 
     created = 0
     errors = []
+    cases_batch = []
     for i, row in enumerate(rows, start=2):
         if not row or not row[0]:
             continue
@@ -388,10 +425,14 @@ async def import_cases_excel(
                             "expected_result": expected[si].strip() if si < len(expected) else "",
                         })
 
-            await create_case(db, project_id, current_user.id, case_data)
+            cases_batch.append(case_data)
             created += 1
         except Exception as e:
             errors.append(f"第{i}行: {e}")
+
+    # 批量插入，大幅减少数据库往返
+    if cases_batch:
+        await batch_import_cases(db, project_id, current_user.id, cases_batch)
 
     wb.close()
     return {"created": created, "errors": errors, "total": len(rows)}

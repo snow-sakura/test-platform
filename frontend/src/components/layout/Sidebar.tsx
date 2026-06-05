@@ -18,6 +18,7 @@ import {
   FileTextOutlined,
   ToolOutlined,
   BarChartOutlined,
+  DeploymentUnitOutlined,
 } from '@ant-design/icons';
 
 export default function Sidebar() {
@@ -40,6 +41,7 @@ export default function Sidebar() {
     { key: '/ai-smart', icon: <RobotOutlined />, label: t('nav.aiIntelligent') },
     { key: '/ai-evaluator', icon: <MessageOutlined />, label: t('nav.aiReviewer') },
     { key: '/data-factory', icon: <ToolOutlined />, label: t('nav.dataFactory') || '数据工厂' },
+    { key: '/ci-cd', icon: <DeploymentUnitOutlined />, label: t('nav.ciCd') || 'CI/CD' },
     { key: '/settings', icon: <SettingOutlined />, label: t('nav.configuration') },
   ];
 

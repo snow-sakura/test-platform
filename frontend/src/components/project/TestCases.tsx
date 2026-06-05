@@ -38,7 +38,7 @@ export default function TestCases({ projectId, selectedTestPointIds }: Props) {
   const fetchData = () => {
     setLoading(true);
     getTestCases(projectId)
-      .then((res) => setTestCases(res.data?.results ?? res.data))
+      .then((res) => setTestCases(res.data?.results ?? []))
       .finally(() => setLoading(false));
   };
 

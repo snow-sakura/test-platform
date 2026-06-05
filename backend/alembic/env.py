@@ -66,8 +66,8 @@ from app.modules.ai_evaluator.models import (  # noqa: F401
     DifyConfig, AssistantSession, ChatMessage,
 )
 from app.modules.notification_configs.models import UnifiedNotificationConfig  # noqa: F401
-from app.modules.performance.models import (  # noqa: F401
-    PerformanceScenario, PerformanceExecution, PerformanceReport,
+from app.modules.performance_testing.models import (  # noqa: F401
+    PerformanceScene, PerformanceExecution, PerformanceReport, PerformanceJMXFile,
 )
 from app.modules.rbac.models import (  # noqa: F401
     Permission, Role, RolePermission, UserRole,
@@ -76,6 +76,9 @@ from app.modules.requirement_analysis.models import (  # noqa: F401
     RequirementDocument, RequirementAnalysis, BusinessRequirement,
     GeneratedTestCase, AIModelConfig, PromptConfig, GenerationConfig,
     TestCaseGenerationTask,
+)
+from app.modules.ci_cd.models import (  # noqa: F401
+    CiApiToken, CiWebhookEvent, CiPipeline, CiPipelineStep,
 )
 
 target_metadata = Base.metadata

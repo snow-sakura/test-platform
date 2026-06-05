@@ -40,8 +40,8 @@ export default function Documents({ projectId, onDocumentsChange }: Props) {
     setLoading(true);
     getDocuments(projectId)
       .then((res) => {
-        setDocuments(res.data);
-        onDocumentsChange?.(res.data.map((d) => d.id));
+        setDocuments(res.data ?? []);
+        onDocumentsChange?.(res.data?.map((d) => d.id) ?? []);
       })
       .finally(() => setLoading(false));
   };

@@ -35,7 +35,7 @@ export default function UiTestSuitesPage() {
   };
 
   useEffect(() => {
-    getUiProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch(() => {});
+    getUiProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   useEffect(() => { setPage(1); }, [selectedProjectId]);
@@ -160,7 +160,7 @@ export default function UiTestSuitesPage() {
               <Descriptions.Item label="创建时间" span={2}>{detailData.suite.created_at}</Descriptions.Item>
             </Descriptions>
             <Table
-              dataSource={detailData.cases} rowKey="id" size="small" pagination={false}
+              dataSource={detailData.cases || []} rowKey="id" size="small" pagination={false}
               columns={[
                 { title: 'ID', dataIndex: 'id', width: 60 },
                 { title: '用例名称', dataIndex: 'name', width: 200 },

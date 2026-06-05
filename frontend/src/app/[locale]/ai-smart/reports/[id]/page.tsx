@@ -115,7 +115,7 @@ export default function AIReportDetailPage() {
         <Card title="执行日志" style={{ marginBottom: 16 }}>
           <Table
             dataSource={report.execution_log as Record<string, unknown>[]}
-            rowKey={(_, i) => String(i)}
+            rowKey={(r: any) => `${r.time}-${r.step}`}
             size="small" pagination={false}
             columns={[
               { title: '时间', dataIndex: 'time', width: 80 },
@@ -135,7 +135,7 @@ export default function AIReportDetailPage() {
         <Card title="计划任务">
           <Table
             dataSource={report.planned_tasks as Record<string, unknown>[]}
-            rowKey={(_, i) => String(i)}
+            rowKey="task"
             size="small" pagination={false}
             columns={[
               { title: '任务', dataIndex: 'task', ellipsis: true },

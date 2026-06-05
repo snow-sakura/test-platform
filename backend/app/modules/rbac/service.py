@@ -116,6 +116,11 @@ ALL_PERMISSIONS: list[dict] = [
     {"codename": "requirement_analysis.delete", "name": "删除 AI 用例生成", "module": "requirement_analysis"},
     # 仪表盘
     {"codename": "dashboard.view", "name": "查看仪表盘", "module": "dashboard"},
+    # CI/CD 集成
+    {"codename": "ci_cd.view", "name": "查看 CI/CD", "module": "ci_cd"},
+    {"codename": "ci_cd.create", "name": "创建 CI/CD 管道", "module": "ci_cd"},
+    {"codename": "ci_cd.edit", "name": "管理 CI/CD 配置", "module": "ci_cd"},
+    {"codename": "ci_cd.delete", "name": "删除 CI/CD 配置", "module": "ci_cd"},
 ]
 
 # 系统角色定义
@@ -149,6 +154,7 @@ SYSTEM_ROLES: list[dict] = [
             "role.view",
             "requirement_analysis.view", "requirement_analysis.create", "requirement_analysis.edit",
             "dashboard.view",
+            "ci_cd.view", "ci_cd.edit", "ci_cd.create",
         ],
     },
     {
@@ -191,23 +197,32 @@ async def seed_permissions(db: AsyncSession):
 
 
 async def seed_roles(db: AsyncSession):
-    """初始化系统角色"""
+    """同步系统角色（幂等：不存在则创建，已存在则刷新权限）"""
     for role_data in SYSTEM_ROLES:
-        existing = (await db.execute(
-            select(models.Role).where(models.Role.name == role_data["name"])
-        )).scalar_one_or_none()
-        if existing:
-            continue
-
-        role = models.Role(name=role_data["name"], description=role_data["description"], is_system=True)
-        db.add(role)
-        await db.flush()
-
-        # 关联权限
         perm_codenames = role_data["permissions"]
         perms = (await db.execute(
             select(models.Permission).where(models.Permission.codename.in_(perm_codenames))
         )).scalars().all()
+
+        existing = (await db.execute(
+            select(models.Role).where(models.Role.name == role_data["name"])
+        )).scalar_one_or_none()
+
+        if existing:
+            # 已存在：刷新权限关联（删旧加新）
+            role = existing
+            await db.execute(
+                models.RolePermission.__table__.delete().where(
+                    models.RolePermission.role_id == role.id
+                )
+            )
+        else:
+            # 新建角色
+            role = models.Role(name=role_data["name"], description=role_data["description"], is_system=True)
+            db.add(role)
+            await db.flush()
+
+        # 关联权限
         for perm in perms:
             db.add(models.RolePermission(role_id=role.id, permission_id=perm.id))
 
@@ -228,6 +243,30 @@ async def get_user_permissions(db: AsyncSession, user: User) -> list[str]:
         .where(models.UserRole.user_id == user.id)
     )
     return list(set(result.scalars().all()))
+
+
+async def seed_default_roles_for_existing_users(db: AsyncSession):
+    """为所有无角色的存量用户自动分配"普通用户"角色（幂等）"""
+    from app.modules.auth.models import User
+    default_role = (await db.execute(
+        select(models.Role).where(models.Role.name == "普通用户")
+    )).scalar_one_or_none()
+    if not default_role:
+        return
+
+    # 查出所有无角色的用户
+    users_with_role = (await db.execute(
+        select(models.UserRole.user_id).distinct()
+    )).scalars().all()
+    stmt = select(User.id)
+    if users_with_role:
+        stmt = stmt.where(User.id.notin_(users_with_role))
+    users_without_role = (await db.execute(stmt)).scalars().all()
+
+    for uid in users_without_role:
+        db.add(models.UserRole(user_id=uid, role_id=default_role.id))
+    if users_without_role:
+        await db.flush()
 
 
 def require_permission(codename: str):

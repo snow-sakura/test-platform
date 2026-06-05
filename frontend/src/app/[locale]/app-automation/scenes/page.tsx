@@ -52,14 +52,14 @@ export default function ScenesPage() {
   };
 
   useEffect(() => {
-    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch(() => {});
+    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   useEffect(() => {
     if (selectedProjectId) {
       loadCases();
-      getDevices({ project_id: selectedProjectId }).then((r) => setDevices(r.data.results || [])).catch(() => {});
-      getAppPackages(selectedProjectId).then((r) => setPackages(r.data || [])).catch(() => {});
+      getDevices({ project_id: selectedProjectId }).then((r) => setDevices(r.data.results || [])).catch((e) => console.warn('加载设备列表失败', e));
+      getAppPackages(selectedProjectId).then((r) => setPackages(r.data || [])).catch((e) => console.warn('加载包列表失败', e));
     }
   }, [selectedProjectId]);
 

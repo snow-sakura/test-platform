@@ -29,7 +29,7 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
     if (open) {
       request.get<{ id: number; username: string }[]>('/api/auth/users')
         .then((res) => setUsers(res.data || []))
-        .catch(() => {});
+        .catch((e) => console.warn('加载用户列表失败', e));
     }
   }, [open]);
 

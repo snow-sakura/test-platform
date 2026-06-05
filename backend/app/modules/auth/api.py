@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -93,6 +94,15 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         first_name=data.first_name,
         last_name=data.last_name,
     )
+
+    # 为新用户自动分配"普通用户"角色
+    from app.modules.rbac.models import Role, UserRole
+    default_role = (await db.execute(
+        select(Role).where(Role.name == "普通用户")
+    )).scalar_one_or_none()
+    if default_role:
+        db.add(UserRole(user_id=user.id, role_id=default_role.id))
+        await db.flush()
 
     # 生成令牌
     access_token = create_access_token({"sub": str(user.id)})

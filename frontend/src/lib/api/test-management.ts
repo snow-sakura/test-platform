@@ -1,3 +1,23 @@
+/* ====== Dashboard 新端点类型 ====== */
+
+export interface DefectDistribution {
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export interface AiEfficiencyItem {
+  period: string;
+  ai_generated: number;
+  manual: number;
+}
+
+export interface TeamWorkloadItem {
+  user_id: number;
+  username: string;
+  case_count: number;
+}
+
 /** 手工测试全生命周期管理 - API 封装 */
 
 import request from '@/lib/request';
@@ -201,6 +221,21 @@ export function getExecutionSummary(params?: { project_id?: number }) {
   return request.get<{ total: number; passed: number; failed: number; blocked: number; untested: number }>(
     '/api/test-management/dashboard/execution-summary', { params }
   );
+}
+
+/** 缺陷分布统计 */
+export function getDefectDistribution(params?: { project_id?: number }) {
+  return request.get<DefectDistribution>('/api/test-management/dashboard/defect-distribution', { params });
+}
+
+/** AI 效能对比（按月） */
+export function getAiEfficiency(params?: { project_id?: number; months?: number }) {
+  return request.get<AiEfficiencyItem[]>('/api/test-management/dashboard/ai-efficiency', { params });
+}
+
+/** 团队工作量统计 */
+export function getTeamWorkload(params?: { project_id?: number }) {
+  return request.get<TeamWorkloadItem[]>('/api/test-management/dashboard/team-workload', { params });
 }
 
 

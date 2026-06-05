@@ -16,7 +16,7 @@ class DataFactoryRecord(Base):
     __table_args__ = {"comment": "数据工厂执行记录"}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="记录 ID")
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="用户 ID")
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="用户 ID", index=True)
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False, comment="工具名称")
     tool_category: Mapped[str] = mapped_column(String(50), nullable=False, comment="工具分类")
     input_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="输入参数")

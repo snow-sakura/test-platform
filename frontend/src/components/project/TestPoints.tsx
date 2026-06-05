@@ -46,7 +46,7 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
   const fetchData = () => {
     setLoading(true);
     getTestPoints(projectId)
-      .then((res) => setTestPoints(res.data?.results ?? res.data))
+      .then((res) => setTestPoints(res.data?.results ?? []))
       .finally(() => setLoading(false));
   };
 

@@ -90,8 +90,9 @@ async def delete_existing_knowledge_base(
     rag = get_rag_service()
     try:
         await asyncio.to_thread(rag.delete_collection, kb.chroma_collection_name)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("ChromaDB 集合删除失败: %s", e)
 
     await delete_knowledge_base(db, kb)
 

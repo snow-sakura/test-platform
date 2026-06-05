@@ -15,7 +15,7 @@ export default function ExecutionsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch(() => {});
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   const loadPlans = async () => {

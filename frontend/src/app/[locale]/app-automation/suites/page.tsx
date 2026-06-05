@@ -34,7 +34,7 @@ export default function AppSuitesPage() {
   };
 
   useEffect(() => {
-    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch(() => {});
+    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   useEffect(() => { loadSuites(); }, [selectedProjectId]);

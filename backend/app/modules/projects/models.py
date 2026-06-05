@@ -43,10 +43,10 @@ class ProjectMember(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="ID")
     project_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID"
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True, comment="项目 ID"
     )
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="用户 ID"
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True, comment="用户 ID"
     )
     role: Mapped[ProjectMemberRole] = mapped_column(
         Enum(ProjectMemberRole, name="project_member_role"),
@@ -80,7 +80,7 @@ class Project(Base):
     start_date: Mapped[date | None] = mapped_column(nullable=True, comment="开始日期")
     end_date: Mapped[date | None] = mapped_column(nullable=True, comment="结束日期")
     created_by: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="创建者",
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="创建者", index=True
     )
     # 关联关系
     creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by], lazy="selectin")

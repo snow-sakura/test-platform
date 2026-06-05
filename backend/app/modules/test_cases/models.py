@@ -19,10 +19,10 @@ class TestCase(Base):
         Integer, primary_key=True, autoincrement=True, comment="测试用例 ID"
     )
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目 ID"
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True, comment="所属项目 ID"
     )
     test_point_id: Mapped[int] = mapped_column(
-        ForeignKey("test_points.id", ondelete="CASCADE"), nullable=False, comment="关联的测试点 ID"
+        ForeignKey("test_points.id", ondelete="CASCADE"), nullable=False, index=True, comment="关联的测试点 ID"
     )
     case_number: Mapped[str | None] = mapped_column(
         String(50), nullable=True, comment="用例编号: TC-{test_point_id}-{seq}"

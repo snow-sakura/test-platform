@@ -17,7 +17,7 @@ class AICase(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="用例 ID")
     project_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, comment="关联项目"
+        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True, comment="关联项目"
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="用例名称")
     task_description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="自然语言任务描述")
@@ -49,10 +49,10 @@ class AIExecutionRecord(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="记录 ID")
     ai_case_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("ai_smart_cases.id", ondelete="SET NULL"), nullable=True, comment="关联 AI 用例"
+        Integer, ForeignKey("ai_smart_cases.id", ondelete="SET NULL"), nullable=True, index=True, comment="关联 AI 用例"
     )
     project_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, comment="关联项目"
+        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True, comment="关联项目"
     )
     task_description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="执行的任务描述")
     execution_mode: Mapped[str] = mapped_column(

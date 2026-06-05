@@ -54,7 +54,7 @@ export default function UiTestCasesPage() {
   };
 
   useEffect(() => {
-    getUiProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch(() => {});
+    getUiProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   useEffect(() => { setPage(1); }, [selectedProjectId]);

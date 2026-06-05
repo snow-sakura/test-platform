@@ -18,10 +18,10 @@ class TestPoint(Base):
         Integer, primary_key=True, autoincrement=True, comment="测试点 ID"
     )
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目 ID"
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True, comment="所属项目 ID"
     )
     document_id: Mapped[int | None] = mapped_column(
-        ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, comment="来源文档（AI 提取时关联）"
+        ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, index=True, comment="来源文档（AI 提取时关联）"
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False, comment="测试点标题")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="测试点描述")

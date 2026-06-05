@@ -50,7 +50,7 @@ class Device(Base):
     __table_args__ = {"comment": "设备"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="设备 ID")
-    project_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="SET NULL"), nullable=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="SET NULL"), nullable=True, index=True)
     device_id: Mapped[str] = mapped_column(String(200), nullable=False, comment="ADB 序列号/UDID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="设备名称")
     platform: Mapped[str] = mapped_column(String(20), default="android", comment="android/ios")
@@ -76,7 +76,7 @@ class AppPackage(Base):
     __table_args__ = {"comment": "应用包"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="包 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     package_name: Mapped[str] = mapped_column(String(300), nullable=False, comment="Android package/ iOS bundle")
     app_name: Mapped[str] = mapped_column(String(200), nullable=False, comment="应用名称")
     main_activity: Mapped[str | None] = mapped_column(String(300), nullable=True, comment="启动 Activity")
@@ -93,7 +93,7 @@ class AppImageCategory(Base):
     __table_args__ = {"comment": "图片分类"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="分类 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="分类名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="分类描述")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -114,7 +114,7 @@ class AppElement(Base):
     __table_args__ = {"comment": "APP 元素"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="元素 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="元素名称")
     element_type: Mapped[str] = mapped_column(
         String(20), nullable=False, comment="image/coordinate/region/text",
@@ -125,7 +125,7 @@ class AppElement(Base):
     )
     threshold: Mapped[float | None] = mapped_column(Float, nullable=True, comment="图像匹配阈值 0-1")
     image_category_id: Mapped[int | None] = mapped_column(
-        ForeignKey("app_automation_image_categories.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("app_automation_image_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="元素描述")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -141,10 +141,10 @@ class AppTestCase(Base):
     __table_args__ = {"comment": "APP 测试用例"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="用例 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="用例名称")
-    package_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_packages.id", ondelete="SET NULL"), nullable=True)
-    device_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_devices.id", ondelete="SET NULL"), nullable=True)
+    package_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_packages.id", ondelete="SET NULL"), nullable=True, index=True)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_devices.id", ondelete="SET NULL"), nullable=True, index=True)
     scene_data: Mapped[list | None] = mapped_column(
         JSON, nullable=True, comment="场景编排步骤: [{action, element_id, params}]",
     )
@@ -166,7 +166,7 @@ class AppTestSuite(Base):
     __table_args__ = {"comment": "APP 测试套件"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="套件 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="套件名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="套件描述")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -184,8 +184,8 @@ class AppTestSuiteCase(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
-    suite_id: Mapped[int] = mapped_column(ForeignKey("app_automation_test_suites.id", ondelete="CASCADE"), nullable=False)
-    test_case_id: Mapped[int] = mapped_column(ForeignKey("app_automation_test_cases.id", ondelete="CASCADE"), nullable=False)
+    suite_id: Mapped[int] = mapped_column(ForeignKey("app_automation_test_suites.id", ondelete="CASCADE"), nullable=False, index=True)
+    test_case_id: Mapped[int] = mapped_column(ForeignKey("app_automation_test_cases.id", ondelete="CASCADE"), nullable=False, index=True)
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序")
 
     suite = relationship("AppTestSuite", back_populates="case_links")
@@ -198,9 +198,9 @@ class AppTestExecution(Base):
     __table_args__ = {"comment": "测试执行"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="执行 ID")
-    test_case_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_test_cases.id", ondelete="SET NULL"), nullable=True)
-    suite_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_test_suites.id", ondelete="SET NULL"), nullable=True)
-    device_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_devices.id", ondelete="SET NULL"), nullable=True)
+    test_case_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_test_cases.id", ondelete="SET NULL"), nullable=True, index=True)
+    suite_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_test_suites.id", ondelete="SET NULL"), nullable=True, index=True)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_devices.id", ondelete="SET NULL"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", comment="pending/running/completed/failed")
     result: Mapped[str | None] = mapped_column(String(20), nullable=True, comment="passed/failed")
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="开始时间")
@@ -219,7 +219,7 @@ class AppScreenshot(Base):
     __table_args__ = {"comment": "执行截图"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="截图 ID")
-    execution_id: Mapped[int] = mapped_column(ForeignKey("app_automation_test_executions.id", ondelete="CASCADE"), nullable=False)
+    execution_id: Mapped[int] = mapped_column(ForeignKey("app_automation_test_executions.id", ondelete="CASCADE"), nullable=False, index=True)
     step_index: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="步骤索引")
     image_path: Mapped[str] = mapped_column(String(500), nullable=False)
     captured_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="截图时间")
@@ -233,7 +233,7 @@ class AppComponentLibrary(Base):
     __table_args__ = {"comment": "组件库"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="组件 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("app_automation_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="组件名称")
     component_type: Mapped[str] = mapped_column(String(20), default="basic", comment="basic/custom")
     config: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="组件配置")
@@ -250,7 +250,7 @@ class AppScheduledTask(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="任务 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="任务名称")
-    suite_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_test_suites.id", ondelete="CASCADE"), nullable=True)
+    suite_id: Mapped[int | None] = mapped_column(ForeignKey("app_automation_test_suites.id", ondelete="CASCADE"), nullable=True, index=True)
     cron_expression: Mapped[str] = mapped_column(String(100), default="0 9 * * 1-5", comment="Cron 表达式")
     trigger_type: Mapped[str] = mapped_column(String(20), default="cron", comment="cron/interval")
     interval_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="间隔秒数")

@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import engine
 from app.core.scheduler import start_scheduler, shutdown_scheduler
+from app.database import async_session
+from app.modules.rbac.service import seed_permissions, seed_roles, seed_default_roles_for_existing_users
 from app.modules.auth.api import router as auth_router
 from app.modules.documents.api import router as documents_router
 from app.modules.projects.api import router as projects_router
@@ -26,15 +28,21 @@ from app.modules.ai_evaluator.api import router as ai_evaluator_router
 from app.modules.requirement_analysis.api import router as requirement_analysis_router
 from app.modules.notification_configs.api import router as notification_configs_router
 from app.modules.dashboard.api import router as dashboard_router
+from app.modules.ci_cd.api import router as ci_cd_router
+from app.modules.performance_testing.api import router as performance_router
 from app.modules.rbac.api import router as rbac_router
-
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """管理应用生命周期：启动/关闭数据库连接、调度器"""
+    """管理应用生命周期：启动/关闭数据库连接、调度器、初始化 RBAC"""
     # 启动调度器
     start_scheduler()
+    # 自动初始化 RBAC 种子数据 + 为存量用户补默认角色（全部幂等）
+    async with async_session() as db:
+        await seed_permissions(db)
+        await seed_roles(db)
+        await seed_default_roles_for_existing_users(db)
     yield
     # 关闭调度器
     shutdown_scheduler()
@@ -85,4 +93,6 @@ app.include_router(ai_evaluator_router, prefix=settings.API_PREFIX)
 app.include_router(requirement_analysis_router, prefix=settings.API_PREFIX)
 app.include_router(notification_configs_router, prefix=settings.API_PREFIX)
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
+app.include_router(ci_cd_router, prefix=settings.API_PREFIX)
+app.include_router(performance_router, prefix=settings.API_PREFIX)
 app.include_router(rbac_router, prefix=settings.API_PREFIX)

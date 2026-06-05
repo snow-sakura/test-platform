@@ -48,7 +48,7 @@ export default function RunListPage() {
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results || []);
-    }).catch(() => {});
+    }).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   // 加载计划列表（用于筛选器）

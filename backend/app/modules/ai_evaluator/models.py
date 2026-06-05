@@ -34,7 +34,7 @@ class AssistantSession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="会话 ID")
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="用户 ID"
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True, comment="用户 ID"
     )
     session_id: Mapped[str] = mapped_column(
         String(100), unique=True, nullable=False, comment="对外会话 ID"
@@ -63,7 +63,7 @@ class ChatMessage(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="消息 ID")
     session_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("ai_evaluator_sessions.id", ondelete="CASCADE"),
+        Integer, ForeignKey("ai_evaluator_sessions.id", ondelete="CASCADE"), index=True,
         nullable=False, comment="会话 ID",
     )
     role: Mapped[str] = mapped_column(

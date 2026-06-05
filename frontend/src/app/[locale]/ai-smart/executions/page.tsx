@@ -164,7 +164,7 @@ export default function AIExecutionsPage() {
             {currentRecord.execution_log && currentRecord.execution_log.length > 0 && (
               <>
                 <Text strong>执行日志：</Text>
-                <Table dataSource={currentRecord.execution_log as Record<string, unknown>[]} rowKey={(_, i) => String(i)}
+                <Table dataSource={currentRecord.execution_log as Record<string, unknown>[]} rowKey={(r: any) => `${r.time}-${r.step}`}
                   size="small" pagination={false}
                   columns={[
                     { title: '时间', dataIndex: 'time', width: 80 },

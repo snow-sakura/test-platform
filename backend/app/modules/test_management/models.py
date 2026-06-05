@@ -25,7 +25,7 @@ class TestManagementCase(Base):
     __table_args__ = {"comment": "手工测试用例"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="用例 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False, comment="用例标题")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="用例描述")
     preconditions: Mapped[str | None] = mapped_column(Text, nullable=True, comment="前置条件")
@@ -34,7 +34,7 @@ class TestManagementCase(Base):
         String(20), default="draft", comment="draft/pending_review/approved/rejected"
     )
     case_type: Mapped[str | None] = mapped_column(String(50), nullable=True, comment="功能/性能/安全/兼容性/UI")
-    author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间")
 
@@ -65,7 +65,7 @@ class TestManagementCaseStep(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="步骤 ID")
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     step_number: Mapped[int] = mapped_column(Integer, nullable=False, comment="步骤序号")
     action: Mapped[str] = mapped_column(Text, nullable=False, comment="操作描述")
@@ -84,12 +84,12 @@ class TestManagementCaseAttachment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="附件 ID")
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False, comment="原始文件名")
     file_path: Mapped[str] = mapped_column(String(500), nullable=False, comment="存储路径")
     file_size: Mapped[int] = mapped_column(Integer, default=0, comment="文件大小（字节）")
-    uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="上传时间")
 
     case = relationship("TestManagementCase", back_populates="attachments")
@@ -103,9 +103,9 @@ class TestManagementCaseComment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="评论 ID")
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False, comment="评论内容")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
 
@@ -124,10 +124,10 @@ class TestManagementSuite(Base):
     __table_args__ = {"comment": "测试套件"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="套件 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="套件名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="套件描述")
-    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间")
 
@@ -149,10 +149,10 @@ class TestManagementSuiteCase(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     suite_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_suites.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_suites.id", ondelete="CASCADE"), nullable=False, index=True
     )
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序")
 
@@ -174,7 +174,7 @@ class TestManagementVersion(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False, comment="版本名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="版本描述")
     is_baseline: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否基线版本")
-    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
 
     creator = relationship("User", foreign_keys=[created_by])
@@ -191,10 +191,10 @@ class TestManagementVersionProject(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     version_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_versions.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_versions.id", ondelete="CASCADE"), nullable=False, index=True
     )
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     version = relationship("TestManagementVersion", back_populates="project_links")
@@ -214,7 +214,7 @@ class TestManagementReview(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="评审 ID")
     title: Mapped[str] = mapped_column(String(200), nullable=False, comment="评审标题")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="评审描述")
-    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(
         String(20), default="draft", comment="draft/in_progress/completed",
     )
@@ -246,10 +246,10 @@ class TestManagementReviewProject(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     review_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False, index=True
     )
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     review = relationship("TestManagementReview", back_populates="project_links")
@@ -266,10 +266,10 @@ class TestManagementReviewCase(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     review_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False, index=True
     )
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     review = relationship("TestManagementReview", back_populates="case_links")
@@ -286,9 +286,9 @@ class TestManagementReviewAssignment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="分配 ID")
     review_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", comment="pending/completed")
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     checklist_results: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="检查清单逐项结果")
@@ -305,12 +305,12 @@ class TestManagementReviewComment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="意见 ID")
     review_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_reviews.id", ondelete="CASCADE"), nullable=False, index=True
     )
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False, comment="意见内容")
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否已解决")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -347,11 +347,11 @@ class TestManagementPlan(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="计划 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="计划名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="计划描述")
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     version_id: Mapped[int | None] = mapped_column(
-        ForeignKey("test_management_versions.id", ondelete="CASCADE"), nullable=True,
+        ForeignKey("test_management_versions.id", ondelete="CASCADE"), nullable=True, index=True
     )
-    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否激活")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间")
@@ -369,10 +369,10 @@ class TestManagementRun(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="执行 ID")
     plan_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_plans.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_plans.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="执行名称")
-    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(
         String(20), default="pending", comment="pending/in_progress/completed",
     )
@@ -397,10 +397,10 @@ class TestManagementRunCase(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     run_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_runs.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     status: Mapped[str] = mapped_column(
         String(20), default="untested",
@@ -410,7 +410,7 @@ class TestManagementRunCase(Base):
     comments: Mapped[str | None] = mapped_column(Text, nullable=True, comment="备注")
     defects: Mapped[str | None] = mapped_column(Text, nullable=True, comment="缺陷链接/编号")
     elapsed_time: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="耗时（秒）")
-    executed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    executed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     executed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     run = relationship("TestManagementRun", back_populates="run_cases")
@@ -429,11 +429,11 @@ class TestManagementRunCaseHistory(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="历史 ID")
     run_case_id: Mapped[int] = mapped_column(
-        ForeignKey("test_management_run_cases.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("test_management_run_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, comment="状态")
     actual_result: Mapped[str | None] = mapped_column(Text, nullable=True, comment="实际结果")
-    executed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    executed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     executed_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="执行时间")
 
     run_case = relationship("TestManagementRunCase", back_populates="histories")
@@ -451,15 +451,15 @@ class TestManagementReport(Base):
     __table_args__ = {"comment": "测试报告"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="报告 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="报告名称")
     report_type: Mapped[str] = mapped_column(String(50), default="custom", comment="daily/weekly/custom")
     run_id: Mapped[int | None] = mapped_column(
-        ForeignKey("test_management_runs.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("test_management_runs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     summary: Mapped[str | None] = mapped_column(Text, nullable=True, comment="报告摘要")
     content: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="报告详细内容（JSON）")
-    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
 
     project = relationship("Project")

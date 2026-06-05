@@ -53,10 +53,10 @@ class UiElementGroup(Base):
     __table_args__ = {"comment": "元素分组"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="分组 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="分组名称")
     parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ui_automation_element_groups.id", ondelete="SET NULL"), nullable=True,
+        ForeignKey("ui_automation_element_groups.id", ondelete="SET NULL"), nullable=True, index=True
     )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, comment="排序序号")
 
@@ -71,7 +71,7 @@ class UiElement(Base):
     __table_args__ = {"comment": "UI 元素"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="元素 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="元素名称")
     locator_type: Mapped[str] = mapped_column(
         String(30), nullable=False, comment="id/name/css/xpath/class/text",
@@ -80,7 +80,7 @@ class UiElement(Base):
     backup_locators: Mapped[list | None] = mapped_column(
         JSON, nullable=True, comment="备用定位器列表: [{type, value}]",
     )
-    group_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_element_groups.id", ondelete="SET NULL"), nullable=True)
+    group_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_element_groups.id", ondelete="SET NULL"), nullable=True, index=True)
     page_url: Mapped[str | None] = mapped_column(String(500), nullable=True, comment="所在页面 URL")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="元素描述")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -97,7 +97,7 @@ class UiPageObject(Base):
     __table_args__ = {"comment": "页面对象"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="页面对象 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="页面名称")
     url: Mapped[str | None] = mapped_column(String(500), nullable=True, comment="页面 URL")
     generated_code: Mapped[str | None] = mapped_column(Text, nullable=True, comment="自动生成的 Page Object 代码")
@@ -118,10 +118,10 @@ class UiPageObjectElement(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     page_object_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_page_objects.id", ondelete="CASCADE"), nullable=False, comment="页面对象 ID",
+        ForeignKey("ui_automation_page_objects.id", ondelete="CASCADE"), nullable=False, comment="页面对象 ID", index=True
     )
     element_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_elements.id", ondelete="CASCADE"), nullable=False, comment="元素 ID",
+        ForeignKey("ui_automation_elements.id", ondelete="CASCADE"), nullable=False, comment="元素 ID", index=True
     )
     alias: Mapped[str | None] = mapped_column(String(200), nullable=True, comment="元素别名")
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序序号")
@@ -136,9 +136,9 @@ class UiTestScript(Base):
     __table_args__ = {"comment": "测试脚本"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="脚本 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="脚本名称")
-    page_object_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_page_objects.id", ondelete="SET NULL"), nullable=True, comment="页面对象 ID")
+    page_object_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_page_objects.id", ondelete="SET NULL"), nullable=True, comment="页面对象 ID", index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="脚本描述")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间")
@@ -156,14 +156,14 @@ class UiScriptStep(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="步骤 ID")
     script_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_test_scripts.id", ondelete="CASCADE"), nullable=False, comment="脚本 ID",
+        ForeignKey("ui_automation_test_scripts.id", ondelete="CASCADE"), nullable=False, comment="脚本 ID", index=True
     )
     step_number: Mapped[int] = mapped_column(Integer, nullable=False, comment="步骤序号")
     action_type: Mapped[str] = mapped_column(
         String(30), nullable=False,
         comment="click/input/select/wait/assert/scroll/hover/navigate/screenshot",
     )
-    element_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_elements.id", ondelete="SET NULL"), nullable=True, comment="元素 ID")
+    element_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_elements.id", ondelete="SET NULL"), nullable=True, comment="元素 ID", index=True)
     input_value: Mapped[str | None] = mapped_column(Text, nullable=True, comment="输入值")
     expected_result: Mapped[str | None] = mapped_column(Text, nullable=True, comment="预期结果/断言值")
     wait_seconds: Mapped[float | None] = mapped_column(Float, nullable=True, comment="等待时间(秒)")
@@ -179,10 +179,10 @@ class UiScriptElementUsage(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="使用 ID")
     script_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_test_scripts.id", ondelete="CASCADE"), nullable=False, comment="脚本 ID",
+        ForeignKey("ui_automation_test_scripts.id", ondelete="CASCADE"), nullable=False, comment="脚本 ID", index=True
     )
     element_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_elements.id", ondelete="CASCADE"), nullable=False, comment="元素 ID",
+        ForeignKey("ui_automation_elements.id", ondelete="CASCADE"), nullable=False, comment="元素 ID", index=True
     )
     usage_count: Mapped[int] = mapped_column(Integer, default=0, comment="使用次数")
     context: Mapped[str | None] = mapped_column(Text, nullable=True, comment="使用场景描述")
@@ -194,9 +194,9 @@ class UiTestCase(Base):
     __table_args__ = {"comment": "UI 测试用例"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="用例 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="用例名称")
-    script_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_scripts.id", ondelete="SET NULL"), nullable=True, comment="脚本 ID")
+    script_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_scripts.id", ondelete="SET NULL"), nullable=True, comment="脚本 ID", index=True)
     priority: Mapped[str] = mapped_column(String(20), default="MEDIUM", comment="优先级: HIGH/MEDIUM/LOW")
     status: Mapped[str] = mapped_column(String(20), default="draft", comment="状态: draft/ready")
     test_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="测试数据（JSON）")
@@ -213,7 +213,7 @@ class UiTestSuite(Base):
     __table_args__ = {"comment": "UI 测试套件"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="套件 ID")
-    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=False, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="套件名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="套件描述")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -234,10 +234,10 @@ class UiTestSuiteCase(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
     suite_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_test_suites.id", ondelete="CASCADE"), nullable=False, comment="套件 ID",
+        ForeignKey("ui_automation_test_suites.id", ondelete="CASCADE"), nullable=False, comment="套件 ID", index=True
     )
     test_case_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_test_cases.id", ondelete="CASCADE"), nullable=False, comment="用例 ID",
+        ForeignKey("ui_automation_test_cases.id", ondelete="CASCADE"), nullable=False, comment="用例 ID", index=True
     )
     order: Mapped[int] = mapped_column(Integer, default=0, comment="排序")
 
@@ -251,8 +251,8 @@ class UiTestExecution(Base):
     __table_args__ = {"comment": "测试执行"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="执行 ID")
-    suite_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_suites.id", ondelete="SET NULL"), nullable=True, comment="套件 ID")
-    test_case_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_cases.id", ondelete="SET NULL"), nullable=True, comment="用例 ID")
+    suite_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_suites.id", ondelete="SET NULL"), nullable=True, comment="套件 ID", index=True)
+    test_case_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_cases.id", ondelete="SET NULL"), nullable=True, comment="用例 ID", index=True)
     status: Mapped[str] = mapped_column(
         String(20), default="pending", comment="pending/running/completed/failed/aborted",
     )
@@ -276,10 +276,10 @@ class UiScreenshot(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="截图 ID")
     execution_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_test_executions.id", ondelete="CASCADE"), nullable=False, comment="执行 ID",
+        ForeignKey("ui_automation_test_executions.id", ondelete="CASCADE"), nullable=False, comment="执行 ID", index=True
     )
     step_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ui_automation_script_steps.id", ondelete="CASCADE"), nullable=True, comment="步骤 ID",
+        ForeignKey("ui_automation_script_steps.id", ondelete="CASCADE"), nullable=True, comment="步骤 ID", index=True
     )
     image_path: Mapped[str] = mapped_column(String(500), nullable=False, comment="截图存储路径")
     captured_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="截图时间")
@@ -294,9 +294,9 @@ class UiOperationRecord(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="记录 ID")
     execution_id: Mapped[int] = mapped_column(
-        ForeignKey("ui_automation_test_executions.id", ondelete="CASCADE"), nullable=False, comment="执行 ID",
+        ForeignKey("ui_automation_test_executions.id", ondelete="CASCADE"), nullable=False, comment="执行 ID", index=True
     )
-    step_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_script_steps.id", ondelete="CASCADE"), nullable=True, comment="步骤 ID")
+    step_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_script_steps.id", ondelete="CASCADE"), nullable=True, comment="步骤 ID", index=True)
     action_type: Mapped[str] = mapped_column(String(30), nullable=False, comment="操作类型")
     detail: Mapped[str | None] = mapped_column(Text, nullable=True, comment="操作详情")
     success: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否成功")
@@ -312,7 +312,7 @@ class UiScheduledTask(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="任务 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="任务名称")
-    suite_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_suites.id", ondelete="SET NULL"), nullable=True, comment="套件 ID")
+    suite_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_test_suites.id", ondelete="SET NULL"), nullable=True, comment="套件 ID", index=True)
     cron_expression: Mapped[str] = mapped_column(String(100), default="0 9 * * 1-5", comment="Cron 表达式")
     trigger_type: Mapped[str] = mapped_column(String(20), default="cron", comment="cron/interval")
     interval_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="间隔秒数")
@@ -341,7 +341,7 @@ class UiNotificationLog(Base):
     __table_args__ = {"comment": "通知日志"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="日志 ID")
-    config_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_notification_configs.id", ondelete="CASCADE"), nullable=False, comment="通知配置 ID")
+    config_id: Mapped[int] = mapped_column(ForeignKey("ui_automation_notification_configs.id", ondelete="CASCADE"), nullable=False, comment="通知配置 ID", index=True)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="事件类型")
     status: Mapped[str] = mapped_column(String(20), nullable=False, comment="success/failed")
     message: Mapped[str | None] = mapped_column(Text, nullable=True, comment="消息内容")
@@ -355,7 +355,7 @@ class UiEnvironment(Base):
     __table_args__ = {"comment": "环境配置"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="环境 ID")
-    project_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=True, comment="项目 ID")
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("ui_automation_projects.id", ondelete="CASCADE"), nullable=True, comment="项目 ID", index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="环境名称")
     browser_type: Mapped[str] = mapped_column(String(50), default="chromium", comment="浏览器类型")
     window_width: Mapped[int] = mapped_column(Integer, default=1280, comment="窗口宽度")

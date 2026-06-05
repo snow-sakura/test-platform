@@ -18,7 +18,7 @@ class Document(Base):
         Integer, primary_key=True, autoincrement=True, comment="文档 ID"
     )
     project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目 ID"
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True, comment="所属项目 ID"
     )
     filename: Mapped[str] = mapped_column(String(500), nullable=False, comment="原始文件名")
     file_path: Mapped[str] = mapped_column(String(1000), nullable=False, comment="服务端存储路径")

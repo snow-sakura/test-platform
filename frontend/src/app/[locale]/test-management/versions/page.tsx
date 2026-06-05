@@ -19,7 +19,7 @@ export default function VersionsPage() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch(() => {});
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   const loadVersions = async () => {

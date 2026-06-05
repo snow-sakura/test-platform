@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card, Row, Col, Statistic, Table, Select, message, Tabs, Tag,
 } from 'antd';
@@ -15,9 +15,12 @@ import {
   getExecutionTrend,
   getFailedTop10,
   getExecutionSummary,
+  getDefectDistribution,
+  getAiEfficiency,
+  getTeamWorkload,
 } from '@/lib/api/test-management';
+import type { TestReport, DashboardStats, DefectDistribution, AiEfficiencyItem, TeamWorkloadItem } from '@/lib/api/test-management';
 import { getApiProjects } from '@/lib/api/api-testing';
-import type { TestReport, DashboardStats } from '@/lib/api/test-management';
 import type { ApiProject } from '@/lib/api/api-testing';
 
 export default function ReportsPage() {
@@ -31,35 +34,44 @@ export default function ReportsPage() {
   const [trendData, setTrendData] = useState<{ date: string; total: number; passed: number; failed: number }[]>([]);
   const [failedTop10, setFailedTop10] = useState<{ case_id: number; title: string; fail_count: number }[]>([]);
   const [execSummary, setExecSummary] = useState<{ total: number; passed: number; failed: number; blocked: number; untested: number } | null>(null);
+  const [defectDist, setDefectDist] = useState<DefectDistribution | null>(null);
+  const [aiEfficiency, setAiEfficiency] = useState<AiEfficiencyItem[]>([]);
+  const [teamWorkload, setTeamWorkload] = useState<TeamWorkloadItem[]>([]);
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch(() => {});
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
   }, []);
 
   const loadData = async () => {
     if (!projectId) return;
     setLoading(true);
     try {
-      const [reportsRes, statsRes, trendRes, failedRes, summaryRes] = await Promise.all([
+      const [reportsRes, statsRes, trendRes, failedRes, summaryRes, defectRes, aiRes, workloadRes] = await Promise.all([
         getReports(projectId),
         getTestManagementDashboardStats(projectId),
         getExecutionTrend({ project_id: projectId, days: 14 }),
         getFailedTop10({ project_id: projectId }),
         getExecutionSummary({ project_id: projectId }),
+        getDefectDistribution({ project_id: projectId }),
+        getAiEfficiency({ project_id: projectId, months: 12 }),
+        getTeamWorkload({ project_id: projectId }),
       ]);
       setReports(reportsRes.data.results || []);
       setStats(statsRes.data);
       setTrendData(trendRes.data.data || []);
       setFailedTop10(failedRes.data.data || []);
       setExecSummary(summaryRes.data);
+      setDefectDist(defectRes.data);
+      setAiEfficiency(aiRes.data || []);
+      setTeamWorkload(workloadRes.data || []);
     } catch { message.error('加载失败'); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { loadData(); }, [projectId]);
 
-  /* 通过率仪表盘 ECharts 配置 */
-  const passRateOption = stats ? {
+  /* 通过率仪表盘 ECharts 配置（useMemo 缓存避免每次渲染重建） */
+  const passRateOption = useMemo(() => stats ? {
     series: [
       {
         type: 'gauge',
@@ -91,10 +103,10 @@ export default function ReportsPage() {
         data: [{ value: stats.pass_rate * 100 }],
       },
     ],
-  } : null;
+  } : null, [stats]);
 
   /* 执行概况饼图 */
-  const execPieOption = stats ? {
+  const execPieOption = useMemo(() => stats ? {
     tooltip: { trigger: 'item' },
     series: [
       {
@@ -112,10 +124,10 @@ export default function ReportsPage() {
         ],
       },
     ],
-  } : null;
+  } : null, [stats]);
 
   /* 执行趋势折线图 */
-  const trendOption = trendData.length > 0 ? {
+  const trendOption = useMemo(() => trendData.length > 0 ? {
     tooltip: { trigger: 'axis' },
     legend: { data: ['总执行', '通过', '失败'], top: 0 },
     grid: { left: 50, right: 20, bottom: 30, top: 40 },
@@ -156,10 +168,10 @@ export default function ReportsPage() {
         itemStyle: { color: '#ff4d4f' },
       },
     ],
-  } : null;
+  } : null, [trendData]);
 
   /* 失败 TOP10 横向柱状图 */
-  const failedTop10Option = failedTop10.length > 0 ? {
+  const failedTop10Option = useMemo(() => failedTop10.length > 0 ? {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -183,10 +195,10 @@ export default function ReportsPage() {
       })),
       barMaxWidth: 24,
     }],
-  } : null;
+  } : null, [failedTop10]);
 
   /* 执行状态分布饼图 */
-  const statusPieOption = execSummary ? {
+  const statusPieOption = useMemo(() => execSummary ? {
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     series: [{
       type: 'pie',
@@ -202,7 +214,73 @@ export default function ReportsPage() {
         { value: execSummary.untested, name: '未测', itemStyle: { color: '#d9d9d9' } },
       ],
     }],
-  } : null;
+  } : null, [execSummary]);
+
+  /* 缺陷分布饼图 */
+  const defectPieOption = useMemo(() => defectDist ? {
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [{
+      type: 'pie',
+      radius: ['40%', '70%'],
+      center: ['50%', '50%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { show: true, formatter: '{b}: {c}' },
+      data: [
+        { value: defectDist.high, name: '高优先级', itemStyle: { color: '#ff4d4f' } },
+        { value: defectDist.medium, name: '中优先级', itemStyle: { color: '#faad14' } },
+        { value: defectDist.low, name: '低优先级', itemStyle: { color: '#52c41a' } },
+      ],
+    }],
+  } : null, [defectDist]);
+
+  /* AI 效能对比柱状图 */
+  const aiEfficiencyOption = useMemo(() => aiEfficiency.length > 0 ? {
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['AI 生成', '人工创建'], top: 0 },
+    grid: { left: 60, right: 20, bottom: 50, top: 40 },
+    xAxis: {
+      type: 'category',
+      data: aiEfficiency.map((d) => d.period),
+      axisLabel: { rotate: 45, fontSize: 11 },
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [
+      {
+        name: 'AI 生成',
+        type: 'bar',
+        data: aiEfficiency.map((d) => d.ai_generated),
+        itemStyle: { color: '#1677ff', borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 24,
+      },
+      {
+        name: '人工创建',
+        type: 'bar',
+        data: aiEfficiency.map((d) => d.manual),
+        itemStyle: { color: '#52c41a', borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 24,
+      },
+    ],
+  } : null, [aiEfficiency]);
+
+  /* 团队工作量横向柱状图 */
+  const workloadOption = useMemo(() => teamWorkload.length > 0 ? {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 100, right: 40, top: 10, bottom: 30 },
+    xAxis: { type: 'value', minInterval: 1, name: '执行用例数' },
+    yAxis: {
+      type: 'category',
+      data: teamWorkload.map((d) => d.username),
+      axisLabel: { fontSize: 12 },
+    },
+    series: [{
+      type: 'bar',
+      data: teamWorkload.map((d) => ({
+        value: d.case_count,
+        itemStyle: { color: d.case_count >= 10 ? '#722ed1' : '#1677ff' },
+      })),
+      barMaxWidth: 24,
+    }],
+  } : null, [teamWorkload]);
 
   return (
     <div>
@@ -321,6 +399,47 @@ export default function ReportsPage() {
             ) : (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
                 暂无失败数据
+              </div>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 第四行：缺陷分布饼图 + 团队工作量 */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={10}>
+          <Card title="缺陷分布（按优先级）" size="small">
+            {defectPieOption && Object.values(defectDist || {}).some(v => v > 0) ? (
+              <ReactEChartsCore option={defectPieOption} style={{ height: 260 }} />
+            ) : (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                暂无缺陷数据
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col span={14}>
+          <Card title="团队工作量" size="small">
+            {workloadOption ? (
+              <ReactEChartsCore option={workloadOption} style={{ height: 260 }} />
+            ) : (
+              <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                暂无执行数据
+              </div>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 第五行：AI 效能对比 */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={24}>
+          <Card title="AI 生成 vs 人工创建效能对比（近 12 月）" size="small">
+            {aiEfficiencyOption ? (
+              <ReactEChartsCore option={aiEfficiencyOption} style={{ height: 300 }} />
+            ) : (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                暂无生成数据
               </div>
             )}
           </Card>

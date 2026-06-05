@@ -41,8 +41,8 @@ class RolePermission(Base):
     __table_args__ = {"comment": "角色-权限关联"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
-    role_id: Mapped[int] = mapped_column(ForeignKey("rbac_roles.id", ondelete="CASCADE"), nullable=False, comment="角色 ID")
-    permission_id: Mapped[int] = mapped_column(ForeignKey("rbac_permissions.id", ondelete="CASCADE"), nullable=False, comment="权限 ID")
+    role_id: Mapped[int] = mapped_column(ForeignKey("rbac_roles.id", ondelete="CASCADE"), nullable=False, comment="角色 ID", index=True)
+    permission_id: Mapped[int] = mapped_column(ForeignKey("rbac_permissions.id", ondelete="CASCADE"), nullable=False, comment="权限 ID", index=True)
 
 
 class UserRole(Base):
@@ -51,6 +51,6 @@ class UserRole(Base):
     __table_args__ = {"comment": "用户-角色关联"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="关联 ID")
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="用户 ID")
-    role_id: Mapped[int] = mapped_column(ForeignKey("rbac_roles.id", ondelete="CASCADE"), nullable=False, comment="角色 ID")
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, comment="用户 ID", index=True)
+    role_id: Mapped[int] = mapped_column(ForeignKey("rbac_roles.id", ondelete="CASCADE"), nullable=False, comment="角色 ID", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")

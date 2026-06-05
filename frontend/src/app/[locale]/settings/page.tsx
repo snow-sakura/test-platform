@@ -148,15 +148,15 @@ export default function SettingsPage() {
 
   // ====== 加载扩展配置 ======
   useEffect(() => {
-    listModelConfigs().then(r => setModelConfigs(r.data)).catch(() => {});
-    listPromptConfigs().then(r => setPromptConfigs(r.data)).catch(() => {});
-    listGenerationConfigs().then(r => setGenConfigs(r.data)).catch(() => {});
-    listNotificationConfigs().then(r => setNotifConfigs(r.data)).catch(() => {});
+    listModelConfigs().then(r => setModelConfigs(r.data)).catch((e) => console.warn('加载配置失败', e));
+    listPromptConfigs().then(r => setPromptConfigs(r.data)).catch((e) => console.warn('加载配置失败', e));
+    listGenerationConfigs().then(r => setGenConfigs(r.data)).catch((e) => console.warn('加载配置失败', e));
+    listNotificationConfigs().then(r => setNotifConfigs(r.data)).catch((e) => console.warn('加载配置失败', e));
     // RBAC 数据
-    listPermissions().then(r => setRbacPermissions(r.data)).catch(() => {});
-    listRoles().then(r => setRoles(r.data)).catch(() => {});
-    listUsersWithRoles().then(r => setUsers(r.data)).catch(() => {});
-    getMyPermissions().then(r => setMyPermissions(r.data)).catch(() => {});
+    listPermissions().then(r => setRbacPermissions(r.data)).catch((e) => console.warn('加载配置失败', e));
+    listRoles().then(r => setRoles(r.data)).catch((e) => console.warn('加载配置失败', e));
+    listUsersWithRoles().then(r => setUsers(r.data)).catch((e) => console.warn('加载配置失败', e));
+    getMyPermissions().then(r => setMyPermissions(r.data)).catch((e) => console.warn('加载配置失败', e));
   }, []);
 
   const saveSettings = async (keys: string[], values: Record<string, string>) => {
