@@ -540,6 +540,17 @@ async def list_plans(
     return {"count": total, "results": items}
 
 
+@router.get("/plans/{plan_id}", response_model=PlanResponse)
+async def retrieve_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
+    """获取计划详情"""
+    plan = await get_plan(db, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    resp = PlanResponse.model_validate(plan)
+    resp.run_count = len(plan.runs) if plan.runs else 0
+    return resp
+
+
 @router.post("/plans", response_model=PlanResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_plan(
     data: PlanCreate = ...,
@@ -570,20 +581,30 @@ async def delete_existing_plan(plan_id: int, db: AsyncSession = Depends(get_db))
     await delete_plan(db, plan)
 
 
-@router.get("/runs/{run_id}", response_model=RunResponse)
+@router.get("/runs/{run_id}")
 async def retrieve_run(run_id: int, db: AsyncSession = Depends(get_db)):
-    """获取执行详情"""
+    """获取执行详情（含用例级数据）"""
     run = await get_run(db, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="执行不存在")
-    resp = RunResponse.model_validate(run)
+
     cases = run.run_cases or []
-    resp.total_cases = len(cases)
-    resp.passed = sum(1 for c in cases if c.status == "passed")
-    resp.failed = sum(1 for c in cases if c.status == "failed")
-    resp.blocked = sum(1 for c in cases if c.status == "blocked")
-    resp.untested = sum(1 for c in cases if c.status == "untested")
-    return resp
+    from .schemas import RunCaseResponse
+    return {
+        "id": run.id,
+        "plan_id": run.plan_id,
+        "name": run.name,
+        "assignee_id": run.assignee_id,
+        "status": run.status,
+        "total_cases": len(cases),
+        "passed": sum(1 for c in cases if c.status == "passed"),
+        "failed": sum(1 for c in cases if c.status == "failed"),
+        "blocked": sum(1 for c in cases if c.status == "blocked"),
+        "untested": sum(1 for c in cases if c.status == "untested"),
+        "run_cases": [RunCaseResponse.model_validate(c).model_dump() for c in cases],
+        "created_at": run.created_at.strftime("%Y-%m-%d %H:%M:%S") if run.created_at else None,
+        "updated_at": run.updated_at.strftime("%Y-%m-%d %H:%M:%S") if run.updated_at else None,
+    }
 
 
 @router.put("/runs/{run_id}/cases/{run_case_id}")

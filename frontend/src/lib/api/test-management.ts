@@ -111,6 +111,19 @@ export interface TestPlan {
   updated_at: string;
 }
 
+export interface RunCaseItem {
+  id: number;
+  run_id: number;
+  case_id: number;
+  status: string;
+  actual_result?: string;
+  comments?: string;
+  defects?: string;
+  elapsed_time?: number;
+  executed_by?: number;
+  executed_at?: string;
+}
+
 export interface TestRun {
   id: number;
   plan_id: number;
@@ -122,6 +135,7 @@ export interface TestRun {
   failed: number;
   blocked: number;
   untested: number;
+  run_cases?: RunCaseItem[];
   created_at: string;
   updated_at: string;
 }
@@ -313,6 +327,10 @@ export function getPlans(projectId: number, page = 1, pageSize = 20) {
   return request.get<PaginatedResponse<TestPlan>>('/api/test-management/plans', {
     params: { project_id: projectId, page, page_size: pageSize },
   });
+}
+
+export function getPlan(planId: number) {
+  return request.get<TestPlan>(`/api/test-management/plans/${planId}`);
 }
 
 export function createPlan(projectId: number, data: {
