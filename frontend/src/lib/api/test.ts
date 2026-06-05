@@ -42,9 +42,16 @@ export function extractTestPoints(projectId: number, documentIds: number[], know
   });
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 /** 获取项目测试点列表 */
 export function getTestPoints(projectId: number) {
-  return request.get<TestPoint[]>(`/api/test-points/project/${projectId}`);
+  return request.get<PaginatedResponse<TestPoint>>(`/api/test-points/project/${projectId}`);
 }
 
 /** 手动创建测试点 */
@@ -73,7 +80,7 @@ export function generateTestCases(projectId: number, testPointIds: number[], kno
 
 /** 获取项目测试用例列表 */
 export function getTestCases(projectId: number) {
-  return request.get<TestCase[]>(`/api/test-cases/project/${projectId}`);
+  return request.get<PaginatedResponse<TestCase>>(`/api/test-cases/project/${projectId}`);
 }
 
 /** 获取测试用例详情 */

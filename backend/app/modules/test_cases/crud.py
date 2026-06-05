@@ -4,17 +4,18 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.pagination import PageParams, PaginatedResponse, paginate
+
 from .models import TestCase
+from .schemas import TestCaseResponse
 
 
-async def get_test_cases(db: AsyncSession, project_id: int) -> list[TestCase]:
-    """获取项目的所有测试用例"""
-    result = await db.execute(
-        select(TestCase)
-        .where(TestCase.project_id == project_id)
-        .order_by(TestCase.created_at.desc())
-    )
-    return list(result.scalars().all())
+async def get_test_cases(
+    db: AsyncSession, project_id: int, page_params: PageParams
+) -> PaginatedResponse[TestCaseResponse]:
+    """获取项目的所有测试用例（分页）"""
+    query = select(TestCase).where(TestCase.project_id == project_id).order_by(TestCase.created_at.desc())
+    return await paginate(db, query, page_params, TestCaseResponse, base_url=f"/api/test-cases/project/{project_id}")
 
 
 async def get_test_case(db: AsyncSession, case_id: int) -> TestCase | None:

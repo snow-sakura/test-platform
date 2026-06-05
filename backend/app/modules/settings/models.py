@@ -12,8 +12,9 @@ from app.database import Base
 class SystemSettings(Base):
     """系统设置表，存储 LLM/飞书等可热更新的配置"""
     __tablename__ = "system_settings"
+    __table_args__ = {"comment": "系统设置"}
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="设置 ID")
     key: Mapped[str] = mapped_column(
         String(100), unique=True, nullable=False, comment="配置键"
     )

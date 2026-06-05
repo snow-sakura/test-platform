@@ -4,21 +4,18 @@
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import random
 import re
 import string as str_mod
 import time
 import uuid
-from base64 import b64encode
 from datetime import datetime
 
 import httpx
 
 from .crud import create_request_history, get_environment, get_request
-from .models import ApiEnvironment, ApiRequest, ApiNotificationConfig
+from .models import ApiEnvironment, ApiRequest
 
 
 class VariableResolver:
@@ -194,124 +191,6 @@ class RequestExecutor:
                 return 0, {}, json.dumps({"error": f"请求异常: {str(e)}"}), (time.time() - start_time) * 1000
 
 
-class NotificationSender:
-    """通知发送器
-
-    支持飞书、企业微信、钉钉的 Webhook 消息发送
-    """
-
-    @classmethod
-    async def send(
-        cls,
-        config: ApiNotificationConfig,
-        title: str,
-        content: str,
-    ) -> tuple[bool, str]:
-        """发送通知
-
-        Args:
-            config: 通知配置
-            title: 消息标题
-            content: 消息内容
-
-        Returns:
-            (是否成功, 响应信息)
-        """
-        if config.notify_type == "feishu":
-            return await cls._send_feishu(config.webhook_url, config.secret, title, content)
-        elif config.notify_type == "wechat":
-            return await cls._send_wechat(config.webhook_url, title, content)
-        elif config.notify_type == "dingtalk":
-            return await cls._send_dingtalk(config.webhook_url, config.secret, title, content)
-        return False, f"不支持的通知类型: {config.notify_type}"
-
-    @classmethod
-    async def _send_feishu(
-        cls, webhook_url: str, secret: str | None, title: str, content: str,
-    ) -> tuple[bool, str]:
-        """发送飞书机器人消息"""
-        try:
-            timestamp = str(int(time.time()))
-            sign = ""
-            if secret:
-                string_to_sign = f"{timestamp}\n{secret}"
-                sign = b64encode(
-                    hmac.new(
-                        secret.encode("utf-8"),
-                        string_to_sign.encode("utf-8"),
-                        hashlib.sha256,
-                    ).digest()
-                ).decode("utf-8")
-
-            payload = {
-                "timestamp": timestamp,
-                "sign": sign,
-                "msg_type": "post",
-                "content": {
-                    "post": {
-                        "zh_cn": {
-                            "title": title,
-                            "content": [[{"tag": "text", "text": content}]],
-                        }
-                    }
-                },
-            }
-
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.post(webhook_url, json=payload)
-                return response.is_success, response.text
-        except Exception as e:
-            return False, str(e)
-
-    @classmethod
-    async def _send_wechat(
-        cls, webhook_url: str, title: str, content: str,
-    ) -> tuple[bool, str]:
-        """发送企业微信机器人消息"""
-        try:
-            payload = {
-                "msgtype": "markdown",
-                "markdown": {
-                    "content": f"## {title}\n{content}",
-                },
-            }
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.post(webhook_url, json=payload)
-                return response.is_success, response.text
-        except Exception as e:
-            return False, str(e)
-
-    @classmethod
-    async def _send_dingtalk(
-        cls, webhook_url: str, secret: str | None, title: str, content: str,
-    ) -> tuple[bool, str]:
-        """发送钉钉机器人消息"""
-        try:
-            url = webhook_url
-            if secret:
-                timestamp = str(int(round(time.time() * 1000)))
-                string_to_sign = f"{timestamp}\n{secret}"
-                sign = b64encode(
-                    hmac.new(
-                        secret.encode("utf-8"),
-                        string_to_sign.encode("utf-8"),
-                        hashlib.sha256,
-                    ).digest()
-                ).decode("utf-8")
-                url = f"{webhook_url}&timestamp={timestamp}&sign={sign}"
-
-            payload = {
-                "msgtype": "markdown",
-                "markdown": {
-                    "title": title,
-                    "text": f"# {title}\n{content}",
-                },
-            }
-            async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.post(url, json=payload)
-                return response.is_success, response.text
-        except Exception as e:
-            return False, str(e)
 
 
 async def run_suite_execution(

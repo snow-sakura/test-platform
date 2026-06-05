@@ -6,15 +6,18 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.pagination import PageParams, PaginatedResponse, paginate
+
 from .models import TaskBatch
+from .schemas import TaskBatchResponse
 
 
-async def get_batches(db: AsyncSession) -> list[TaskBatch]:
-    """获取所有任务批次"""
-    result = await db.execute(
-        select(TaskBatch).order_by(TaskBatch.created_at.desc())
-    )
-    return list(result.scalars().all())
+async def get_batches(
+    db: AsyncSession, page_params: PageParams
+) -> PaginatedResponse[TaskBatchResponse]:
+    """获取所有任务批次（分页）"""
+    query = select(TaskBatch).order_by(TaskBatch.created_at.desc())
+    return await paginate(db, query, page_params, TaskBatchResponse, base_url="/api/batches")
 
 
 async def get_batch(db: AsyncSession, batch_id: int) -> TaskBatch | None:
@@ -23,14 +26,12 @@ async def get_batch(db: AsyncSession, batch_id: int) -> TaskBatch | None:
     return result.scalar_one_or_none()
 
 
-async def get_project_batches(db: AsyncSession, project_id: int) -> list[TaskBatch]:
-    """获取项目的所有任务批次"""
-    result = await db.execute(
-        select(TaskBatch)
-        .where(TaskBatch.project_id == project_id)
-        .order_by(TaskBatch.created_at.desc())
-    )
-    return list(result.scalars().all())
+async def get_project_batches(
+    db: AsyncSession, project_id: int, page_params: PageParams
+) -> PaginatedResponse[TaskBatchResponse]:
+    """获取项目的所有任务批次（分页）"""
+    query = select(TaskBatch).where(TaskBatch.project_id == project_id).order_by(TaskBatch.created_at.desc())
+    return await paginate(db, query, page_params, TaskBatchResponse, base_url=f"/api/batches/project/{project_id}")
 
 
 async def create_batch(

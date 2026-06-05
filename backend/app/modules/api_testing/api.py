@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session, get_db
 from app.modules.auth.dependencies import get_current_user
+from app.modules.rbac.service import require_permission
 
 from .crud import (
     clear_project_histories, create_collection, create_environment,
@@ -46,8 +47,10 @@ from .schemas import (
     DashboardStats, HistoryBatchDelete, HistoryClearRequest,
     RequestExecuteRequest, RequestExecuteResponse,
 )
+from app.utils.notification import send_notification as send_notification_shared
+
 from .services import (
-    NotificationSender, RequestExecutor, VariableResolver,
+    RequestExecutor, VariableResolver,
     run_suite_execution,
 )
 
@@ -60,7 +63,10 @@ router = APIRouter(
 # ====== 仪表盘 ======
 
 @router.get("/api-testing/dashboard/stats", response_model=DashboardStats)
-async def get_dashboard_stats_api(db: AsyncSession = Depends(get_db)):
+async def get_dashboard_stats_api(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
+):
     """获取仪表盘统计数据"""
     return await get_dashboard_stats(db)
 
@@ -74,6 +80,7 @@ async def list_api_projects(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取 API 项目分页列表"""
     skip = (page - 1) * page_size
@@ -102,6 +109,7 @@ async def list_api_projects(
 async def retrieve_api_project(
     project_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取 API 项目详情"""
     project = await get_api_project(db, project_id)
@@ -119,6 +127,7 @@ async def retrieve_api_project(
 async def create_new_api_project(
     data: ApiProjectCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建 API 项目"""
     project = await create_api_project(db, data.model_dump())
@@ -130,6 +139,7 @@ async def update_existing_api_project(
     project_id: int,
     data: ApiProjectUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新 API 项目"""
     project = await get_api_project(db, project_id)
@@ -145,6 +155,7 @@ async def update_existing_api_project(
 async def delete_existing_api_project(
     project_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除 API 项目"""
     project = await get_api_project(db, project_id)
@@ -159,6 +170,7 @@ async def delete_existing_api_project(
 async def list_collections_tree(
     project_id: int = Query(..., description="项目 ID"),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取项目集合树（嵌套结构）"""
     collections = await get_project_collections_all(db, project_id)
@@ -191,6 +203,7 @@ async def list_collections_tree(
 async def create_new_collection(
     data: ApiCollectionCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建集合"""
     col = await create_collection(db, data.model_dump())
@@ -202,6 +215,7 @@ async def update_existing_collection(
     collection_id: int,
     data: ApiCollectionUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新集合"""
     col = await get_collection(db, collection_id)
@@ -217,6 +231,7 @@ async def update_existing_collection(
 async def delete_existing_collection(
     collection_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除集合"""
     col = await get_collection(db, collection_id)
@@ -233,6 +248,7 @@ async def list_requests(
     search: str | None = None,
     is_favorite: bool | None = None,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取集合下的请求列表"""
     requests = await get_requests_by_collection(db, collection_id, search, is_favorite)
@@ -243,6 +259,7 @@ async def list_requests(
 async def retrieve_request(
     request_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取请求详情"""
     req = await get_request(db, request_id)
@@ -255,6 +272,7 @@ async def retrieve_request(
 async def create_new_request(
     data: ApiRequestCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建请求"""
     req = await create_request(db, data.model_dump())
@@ -266,6 +284,7 @@ async def update_existing_request(
     request_id: int,
     data: ApiRequestUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新请求"""
     req = await get_request(db, request_id)
@@ -281,6 +300,7 @@ async def update_existing_request(
 async def delete_existing_request(
     request_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除请求"""
     req = await get_request(db, request_id)
@@ -294,6 +314,7 @@ async def execute_single_request(
     request_id: int,
     data: RequestExecuteRequest | None = None,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.execute")),
 ):
     """执行单个请求（核心功能）"""
     req = await get_request(db, request_id)
@@ -361,6 +382,7 @@ async def execute_single_request(
 async def batch_execute_requests(
     data: BatchExecuteRequest,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.execute")),
 ):
     """批量执行请求"""
     started_at = time.time()
@@ -478,6 +500,7 @@ async def list_test_suites(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取测试套件列表"""
     skip = (page - 1) * page_size
@@ -495,6 +518,7 @@ async def list_test_suites(
 async def retrieve_test_suite(
     suite_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取套件详情"""
     suite = await get_test_suite(db, suite_id)
@@ -507,6 +531,7 @@ async def retrieve_test_suite(
 async def create_new_test_suite(
     data: ApiTestSuiteCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建测试套件"""
     suite = await create_test_suite(db, data.model_dump())
@@ -518,6 +543,7 @@ async def update_existing_test_suite(
     suite_id: int,
     data: ApiTestSuiteUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新测试套件"""
     suite = await get_test_suite(db, suite_id)
@@ -533,6 +559,7 @@ async def update_existing_test_suite(
 async def delete_existing_test_suite(
     suite_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除测试套件"""
     suite = await get_test_suite(db, suite_id)
@@ -546,6 +573,7 @@ async def execute_test_suite_api(
     suite_id: int,
     environment_id: int | None = None,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.execute")),
 ):
     """执行测试套件"""
     suite = await get_test_suite(db, suite_id)
@@ -565,6 +593,7 @@ async def list_environments(
     project_id: int | None = None,
     env_type: str | None = None,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取环境列表"""
     envs = await get_environments(db, project_id, env_type)
@@ -575,6 +604,7 @@ async def list_environments(
 async def create_new_environment(
     data: ApiEnvironmentCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建环境"""
     env = await create_environment(db, data.model_dump())
@@ -586,6 +616,7 @@ async def update_existing_environment(
     env_id: int,
     data: ApiEnvironmentUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新环境"""
     env = await get_environment(db, env_id)
@@ -601,6 +632,7 @@ async def update_existing_environment(
 async def delete_existing_environment(
     env_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除环境"""
     env = await get_environment(db, env_id)
@@ -613,6 +645,7 @@ async def delete_existing_environment(
 async def activate_environment(
     env_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """激活环境（自动取消同类型其他环境的激活状态）"""
     env = await get_environment(db, env_id)
@@ -642,6 +675,7 @@ async def list_request_histories(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取请求历史分页列表"""
     skip = (page - 1) * page_size
@@ -661,6 +695,7 @@ async def list_request_histories(
 async def retrieve_request_history(
     history_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取历史详情"""
     history = await get_request_history(db, history_id)
@@ -673,6 +708,7 @@ async def retrieve_request_history(
 async def batch_delete_histories(
     data: HistoryBatchDelete,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """批量删除历史记录"""
     await delete_histories(db, data.ids)
@@ -682,6 +718,7 @@ async def batch_delete_histories(
 async def clear_histories(
     data: HistoryClearRequest,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """清空项目所有历史"""
     await clear_project_histories(db, data.project_id)
@@ -695,6 +732,7 @@ async def list_scheduled_tasks(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取定时任务列表"""
     skip = (page - 1) * page_size
@@ -712,6 +750,7 @@ async def list_scheduled_tasks(
 async def retrieve_scheduled_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取定时任务详情"""
     task = await get_scheduled_task(db, task_id)
@@ -724,6 +763,7 @@ async def retrieve_scheduled_task(
 async def create_new_scheduled_task(
     data: ApiScheduledTaskCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建定时任务"""
     task = await create_scheduled_task(db, data.model_dump())
@@ -735,6 +775,7 @@ async def update_existing_scheduled_task(
     task_id: int,
     data: ApiScheduledTaskUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新定时任务"""
     task = await get_scheduled_task(db, task_id)
@@ -750,6 +791,7 @@ async def update_existing_scheduled_task(
 async def delete_existing_scheduled_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除定时任务"""
     task = await get_scheduled_task(db, task_id)
@@ -762,6 +804,7 @@ async def delete_existing_scheduled_task(
 async def pause_scheduled_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """暂停定时任务"""
     task = await get_scheduled_task(db, task_id)
@@ -778,6 +821,7 @@ async def pause_scheduled_task(
 async def resume_scheduled_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """恢复定时任务"""
     task = await get_scheduled_task(db, task_id)
@@ -795,6 +839,7 @@ async def resume_scheduled_task(
 @router.get("/api-testing/notifications", response_model=list[ApiNotificationConfigResponse])
 async def list_notifications(
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取通知配置列表"""
     notifies = await get_notifications(db)
@@ -805,6 +850,7 @@ async def list_notifications(
 async def create_new_notification(
     data: ApiNotificationConfigCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.create")),
 ):
     """创建通知配置"""
     notify = await create_notification(db, data.model_dump())
@@ -816,6 +862,7 @@ async def update_existing_notification(
     notify_id: int,
     data: ApiNotificationConfigUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.edit")),
 ):
     """更新通知配置"""
     notify = await get_notification(db, notify_id)
@@ -831,6 +878,7 @@ async def update_existing_notification(
 async def delete_existing_notification(
     notify_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.delete")),
 ):
     """删除通知配置"""
     notify = await get_notification(db, notify_id)
@@ -843,15 +891,22 @@ async def delete_existing_notification(
 async def test_notification_send(
     notify_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.execute")),
 ):
     """测试发送通知"""
     notify = await get_notification(db, notify_id)
     if not notify:
         raise HTTPException(status_code=404, detail="通知配置不存在")
 
-    success, response_text = await NotificationSender.send(
-        notify, "TestPlate 通知测试", "这是一条测试消息，来自 TestPlate 接口测试模块",
+    result = await send_notification_shared(
+        notify_type=notify.notify_type,
+        webhook_url=notify.webhook_url,
+        secret=notify.secret,
+        title="TestPlate 通知测试",
+        content="这是一条测试消息，来自 TestPlate 接口测试模块",
     )
+    success = result["success"]
+    response_text = result.get("response") or result.get("error", "")
 
     # 记录日志
     await create_notification_log(db, {
@@ -870,6 +925,7 @@ async def list_notification_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("api_testing.view")),
 ):
     """获取通知日志列表"""
     skip = (page - 1) * page_size

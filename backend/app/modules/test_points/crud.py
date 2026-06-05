@@ -4,17 +4,18 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.pagination import PageParams, PaginatedResponse, paginate
+
 from .models import TestPoint
+from .schemas import TestPointResponse
 
 
-async def get_test_points(db: AsyncSession, project_id: int) -> list[TestPoint]:
-    """获取项目的所有测试点"""
-    result = await db.execute(
-        select(TestPoint)
-        .where(TestPoint.project_id == project_id)
-        .order_by(TestPoint.created_at.desc())
-    )
-    return list(result.scalars().all())
+async def get_test_points(
+    db: AsyncSession, project_id: int, page_params: PageParams
+) -> PaginatedResponse[TestPointResponse]:
+    """获取项目的所有测试点（分页）"""
+    query = select(TestPoint).where(TestPoint.project_id == project_id).order_by(TestPoint.created_at.desc())
+    return await paginate(db, query, page_params, TestPointResponse, base_url=f"/api/test-points/project/{project_id}")
 
 
 async def get_test_point(db: AsyncSession, tp_id: int) -> TestPoint | None:

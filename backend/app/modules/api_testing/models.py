@@ -18,8 +18,9 @@ from app.database import Base
 class ApiProject(Base):
     """API 测试项目"""
     __tablename__ = "api_projects"
+    __table_args__ = {"comment": "API 测试项目"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="项目 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="项目名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, default="", comment="项目描述")
     type: Mapped[str | None] = mapped_column(String(50), nullable=True, default="HTTP", comment="项目类型: HTTP/WebSocket/gRPC")
@@ -41,12 +42,13 @@ class ApiProject(Base):
 class ApiCollection(Base):
     """API 集合/文件夹（树形结构，支持无限级嵌套）"""
     __tablename__ = "api_collections"
+    __table_args__ = {"comment": "API 集合/文件夹"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("api_projects.id"), nullable=False, comment="所属项目")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="集合 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("api_projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="集合名称")
     parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("api_collections.id"), nullable=True, comment="父集合 ID（自引用实现树形）"
+        ForeignKey("api_collections.id", ondelete="CASCADE"), nullable=True, comment="父集合 ID（自引用实现树形）"
     )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, comment="排序序号")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False, comment="创建时间")
@@ -67,9 +69,10 @@ class ApiCollection(Base):
 class ApiRequest(Base):
     """API 请求定义（核心模型）"""
     __tablename__ = "api_requests"
+    __table_args__ = {"comment": "API 请求定义"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    collection_id: Mapped[int] = mapped_column(ForeignKey("api_collections.id"), nullable=False, comment="所属集合")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="请求 ID")
+    collection_id: Mapped[int] = mapped_column(ForeignKey("api_collections.id", ondelete="CASCADE"), nullable=False, comment="所属集合")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="请求名称")
     method: Mapped[str] = mapped_column(String(10), nullable=False, default="GET", comment="HTTP 方法")
     url: Mapped[str] = mapped_column(String(2048), nullable=False, default="", comment="请求 URL")
@@ -100,9 +103,10 @@ class ApiRequest(Base):
 class ApiTestSuite(Base):
     """API 测试套件"""
     __tablename__ = "api_test_suites"
+    __table_args__ = {"comment": "API 测试套件"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("api_projects.id"), nullable=False, comment="所属项目")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="套件 ID")
+    project_id: Mapped[int] = mapped_column(ForeignKey("api_projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="套件名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="套件描述")
     request_ids: Mapped[list | None] = mapped_column(
@@ -120,10 +124,11 @@ class ApiTestSuite(Base):
 class ApiEnvironment(Base):
     """API 环境变量配置"""
     __tablename__ = "api_environments"
+    __table_args__ = {"comment": "API 环境配置"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="环境 ID")
     project_id: Mapped[int | None] = mapped_column(
-        ForeignKey("api_projects.id"), nullable=True,
+        ForeignKey("api_projects.id", ondelete="CASCADE"), nullable=True,
         comment="关联项目 ID（null 表示全局环境）"
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="环境名称")
@@ -143,12 +148,13 @@ class ApiEnvironment(Base):
 class ApiRequestHistory(Base):
     """API 请求执行历史"""
     __tablename__ = "api_request_histories"
+    __table_args__ = {"comment": "API 请求执行历史"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="历史 ID")
     request_id: Mapped[int | None] = mapped_column(
         ForeignKey("api_requests.id", ondelete="SET NULL"), nullable=True, comment="关联请求 ID"
     )
-    project_id: Mapped[int] = mapped_column(ForeignKey("api_projects.id"), nullable=False, comment="所属项目")
+    project_id: Mapped[int] = mapped_column(ForeignKey("api_projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目")
     method: Mapped[str] = mapped_column(String(10), nullable=False, comment="HTTP 方法")
     url: Mapped[str] = mapped_column(String(2048), nullable=False, comment="请求 URL（执行时的实际值）")
     headers: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="请求头")
@@ -176,8 +182,9 @@ class ApiRequestHistory(Base):
 class ApiScheduledTask(Base):
     """API 定时任务"""
     __tablename__ = "api_scheduled_tasks"
+    __table_args__ = {"comment": "API 定时任务"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="任务 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="任务名称")
     task_type: Mapped[str] = mapped_column(
         String(50), nullable=False, default="suite", comment="任务类型: suite/request"
@@ -210,8 +217,9 @@ class ApiScheduledTask(Base):
 class ApiNotificationConfig(Base):
     """通知配置（Webhook 机器人）"""
     __tablename__ = "api_notification_configs"
+    __table_args__ = {"comment": "通知配置"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="配置 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="配置名称")
     notify_type: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="通知类型: feishu/wechat/dingtalk"
@@ -228,8 +236,9 @@ class ApiNotificationConfig(Base):
 class ApiNotificationLog(Base):
     """通知发送日志"""
     __tablename__ = "api_notification_logs"
+    __table_args__ = {"comment": "通知发送日志"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="日志 ID")
     config_id: Mapped[int] = mapped_column(
         ForeignKey("api_notification_configs.id", ondelete="CASCADE"), nullable=False, comment="通知配置 ID"
     )

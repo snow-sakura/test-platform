@@ -12,8 +12,9 @@ from app.database import Base
 class KnowledgeBase(Base):
     """RAG 知识库表，关联 ChromaDB 集合"""
     __tablename__ = "knowledge_bases"
+    __table_args__ = {"comment": "知识库"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="知识库 ID")
     name: Mapped[str] = mapped_column(String(200), nullable=False, comment="知识库名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="知识库描述")
     chroma_collection_name: Mapped[str] = mapped_column(
@@ -34,10 +35,11 @@ class KnowledgeBase(Base):
 class KnowledgeDocument(Base):
     """知识库文档表"""
     __tablename__ = "knowledge_documents"
+    __table_args__ = {"comment": "知识库文档"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="文档 ID")
     knowledge_base_id: Mapped[int] = mapped_column(
-        ForeignKey("knowledge_bases.id"), nullable=False
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, comment="所属知识库 ID"
     )
     filename: Mapped[str] = mapped_column(String(500), nullable=False, comment="文件名")
     file_path: Mapped[str] = mapped_column(String(1000), nullable=False, comment="存储路径")

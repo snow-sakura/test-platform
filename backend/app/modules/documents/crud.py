@@ -4,19 +4,18 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.pagination import PageParams, PaginatedResponse, paginate
+
 from .models import Document
 from .schemas import DocumentResponse
 
 
-async def get_documents(db: AsyncSession, project_id: int) -> list[DocumentResponse]:
-    """获取项目的文档列表"""
-    result = await db.execute(
-        select(Document)
-        .where(Document.project_id == project_id)
-        .order_by(Document.uploaded_at.desc())
-    )
-    docs = result.scalars().all()
-    return [DocumentResponse.model_validate(doc) for doc in docs]
+async def get_documents(
+    db: AsyncSession, project_id: int, page_params: PageParams
+) -> PaginatedResponse[DocumentResponse]:
+    """获取项目的文档列表（分页）"""
+    query = select(Document).where(Document.project_id == project_id).order_by(Document.uploaded_at.desc())
+    return await paginate(db, query, page_params, DocumentResponse, base_url=f"/api/projects/{project_id}/documents")
 
 
 async def get_document(db: AsyncSession, doc_id: int) -> Document | None:

@@ -10,6 +10,8 @@ from app.config import settings
 from app.core.upload import delete_file as delete_physical, upload_file
 from app.database import get_db
 from app.modules.auth.dependencies import get_current_user
+from app.modules.rbac.service import require_permission
+from app.pagination import PageParams, PaginatedResponse
 from app.services.document_parser import parse_document
 from app.services.rag_service import get_rag_service
 
@@ -28,17 +30,21 @@ router = APIRouter(dependencies=[Depends(get_current_user)], tags=["knowledge_ba
 ALLOWED_KB_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".yaml", ".yml", ".csv"}
 
 
-@router.get("/knowledge-bases", response_model=list[KnowledgeBaseResponse])
-async def list_knowledge_bases(db: AsyncSession = Depends(get_db)):
+@router.get("/knowledge-bases", response_model=PaginatedResponse[KnowledgeBaseResponse])
+async def list_knowledge_bases(
+    page_params: PageParams = Depends(),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("knowledgebase.view")),
+):
     """获取所有知识库"""
-    kbs = await get_knowledge_bases(db)
-    return [KnowledgeBaseResponse.model_validate(kb) for kb in kbs]
+    return await get_knowledge_bases(db, page_params)
 
 
 @router.post("/knowledge-bases", response_model=KnowledgeBaseResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_knowledge_base(
     data: KnowledgeBaseCreate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("knowledgebase.create")),
 ):
     """创建知识库（同时创建 ChromaDB 集合）"""
     rag = get_rag_service()
@@ -60,6 +66,7 @@ async def update_existing_knowledge_base(
     kb_id: int,
     data: KnowledgeBaseUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("knowledgebase.edit")),
 ):
     """更新知识库"""
     kb = await get_knowledge_base(db, kb_id)
@@ -73,6 +80,7 @@ async def update_existing_knowledge_base(
 async def delete_existing_knowledge_base(
     kb_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("knowledgebase.delete")),
 ):
     """删除知识库（同时删除 ChromaDB 集合）"""
     kb = await get_knowledge_base(db, kb_id)
@@ -96,6 +104,7 @@ async def upload_knowledge_document(
     kb_id: int,
     file: UploadFile,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("knowledgebase.create")),
 ):
     """上传知识库文档（自动解析、分块、向量化）"""
     kb = await get_knowledge_base(db, kb_id)
@@ -147,15 +156,16 @@ async def upload_knowledge_document(
 
 @router.get(
     "/knowledge-bases/{kb_id}/documents",
-    response_model=list[KnowledgeDocumentResponse],
+    response_model=PaginatedResponse[KnowledgeDocumentResponse],
 )
 async def list_kb_documents(
     kb_id: int,
+    page_params: PageParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("knowledgebase.view")),
 ):
     """获取知识库的文档列表"""
     kb = await get_knowledge_base(db, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在")
-    docs = await get_knowledge_documents(db, kb_id)
-    return [KnowledgeDocumentResponse.model_validate(d) for d in docs]
+    return await get_knowledge_documents(db, kb_id, page_params)

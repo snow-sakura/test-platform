@@ -177,6 +177,32 @@ export function getTestManagementDashboardStats(projectId?: number) {
   });
 }
 
+/** 每日执行趋势 */
+export function getExecutionTrend(params?: { project_id?: number; days?: number }) {
+  return request.get<{ data: { date: string; total: number; passed: number; failed: number }[] }>(
+    '/api/test-management/dashboard/execution-trend', { params }
+  );
+}
+
+/** 执行状态分布 */
+export function getStatusDistribution(params?: { project_id?: number }) {
+  return request.get<Record<string, number>>('/api/test-management/dashboard/status-distribution', { params });
+}
+
+/** 失败 TOP10 */
+export function getFailedTop10(params?: { project_id?: number }) {
+  return request.get<{ data: { case_id: number; title: string; fail_count: number }[] }>(
+    '/api/test-management/dashboard/failed-top10', { params }
+  );
+}
+
+/** 执行汇总统计 */
+export function getExecutionSummary(params?: { project_id?: number }) {
+  return request.get<{ total: number; passed: number; failed: number; blocked: number; untested: number }>(
+    '/api/test-management/dashboard/execution-summary', { params }
+  );
+}
+
 
 // ====== 测试用例 CRUD ======
 
@@ -212,6 +238,28 @@ export function deleteCase(caseId: number) {
 
 export function batchDeleteCases(ids: number[]) {
   return request.post('/api/test-management/cases/batch-delete', ids);
+}
+
+/** 导出测试用例为 Excel（下载文件） */
+export function exportCasesExcel(params: {
+  project_id: number;
+  status?: string;
+  priority?: string;
+}) {
+  return request.get('/api/test-management/cases/export', {
+    params,
+    responseType: 'blob',
+  });
+}
+
+/** 从 Excel 导入测试用例 */
+export function importCasesExcel(projectId: number, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request.post('/api/test-management/cases/import', formData, {
+    params: { project_id: projectId },
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
 }
 
 
@@ -323,9 +371,9 @@ export function submitReview(reviewId: number, data: { comment?: string; checkli
 
 // ====== 执行管理 ======
 
-export function getPlans(projectId: number, page = 1, pageSize = 20) {
+export function getPlans(projectId: number, params?: { page?: number; page_size?: number; search?: string }) {
   return request.get<PaginatedResponse<TestPlan>>('/api/test-management/plans', {
-    params: { project_id: projectId, page, page_size: pageSize },
+    params: { project_id: projectId, ...params },
   });
 }
 
@@ -336,9 +384,21 @@ export function getPlan(planId: number) {
 export function createPlan(projectId: number, data: {
   name: string; description?: string; version_id?: number; case_ids?: number[]; assignee_ids?: number[];
 }) {
-  return request.post<TestPlan>('/api/test-management/plans', data, {
-    params: { project_id: projectId },
-  });
+  return request.post<TestPlan>('/api/test-management/plans', { ...data, project_id: projectId });
+}
+
+export function updatePlan(planId: number, data: { name?: string; description?: string; is_active?: boolean }) {
+  return request.put<TestPlan>(`/api/test-management/plans/${planId}`, data);
+}
+
+export function deletePlan(planId: number) {
+  return request.delete(`/api/test-management/plans/${planId}`);
+}
+
+export function getRuns(params: {
+  plan_id?: number; status?: string; page?: number; page_size?: number;
+}) {
+  return request.get<PaginatedResponse<TestRun>>('/api/test-management/runs', { params });
 }
 
 export function getRun(runId: number) {

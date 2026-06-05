@@ -4,17 +4,20 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.pagination import PageParams, PaginatedResponse, paginate
+
 from .models import KnowledgeBase, KnowledgeDocument
+from .schemas import KnowledgeBaseResponse, KnowledgeDocumentResponse
 
 
 # ---- KnowledgeBase CRUD ----
 
-async def get_knowledge_bases(db: AsyncSession) -> list[KnowledgeBase]:
-    """获取所有知识库"""
-    result = await db.execute(
-        select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc())
-    )
-    return list(result.scalars().all())
+async def get_knowledge_bases(
+    db: AsyncSession, page_params: PageParams
+) -> PaginatedResponse[KnowledgeBaseResponse]:
+    """获取所有知识库（分页）"""
+    query = select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc())
+    return await paginate(db, query, page_params, KnowledgeBaseResponse, base_url="/api/knowledge-bases")
 
 
 async def get_knowledge_base(db: AsyncSession, kb_id: int) -> KnowledgeBase | None:
@@ -64,15 +67,11 @@ async def delete_knowledge_base(db: AsyncSession, kb: KnowledgeBase) -> None:
 # ---- KnowledgeDocument CRUD ----
 
 async def get_knowledge_documents(
-    db: AsyncSession, kb_id: int
-) -> list[KnowledgeDocument]:
-    """获取知识库的文档列表"""
-    result = await db.execute(
-        select(KnowledgeDocument)
-        .where(KnowledgeDocument.knowledge_base_id == kb_id)
-        .order_by(KnowledgeDocument.uploaded_at.desc())
-    )
-    return list(result.scalars().all())
+    db: AsyncSession, kb_id: int, page_params: PageParams
+) -> PaginatedResponse[KnowledgeDocumentResponse]:
+    """获取知识库的文档列表（分页）"""
+    query = select(KnowledgeDocument).where(KnowledgeDocument.knowledge_base_id == kb_id).order_by(KnowledgeDocument.uploaded_at.desc())
+    return await paginate(db, query, page_params, KnowledgeDocumentResponse, base_url=f"/api/knowledge-bases/{kb_id}/documents")
 
 
 async def create_knowledge_document(

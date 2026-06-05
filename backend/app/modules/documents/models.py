@@ -12,9 +12,14 @@ from app.database import Base
 class Document(Base):
     """项目文档表，存储上传文件的元信息和解析后的纯文本内容"""
     __tablename__ = "documents"
+    __table_args__ = {"comment": "文档"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="文档 ID"
+    )
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目 ID"
+    )
     filename: Mapped[str] = mapped_column(String(500), nullable=False, comment="原始文件名")
     file_path: Mapped[str] = mapped_column(String(1000), nullable=False, comment="服务端存储路径")
     file_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="文件类型: pdf/docx/md/yaml/csv")

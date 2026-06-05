@@ -8,6 +8,7 @@
     "uiAutomation": "UI自动化测试",
     "dataFactory": "数据工厂",
     "appAutomation": "APP自动化测试",
+    "performance": "性能测试",
     "aiIntelligent": "AI智能模式",
     "aiReviewer": "AI评测师",
     "configuration": "配置中心"
@@ -57,11 +58,14 @@
     "welcome": "欢迎使用 TestPlate",
     "subtitle": "AI 驱动的全栈测试管理平台",
     "cards": {
+      "projects": {"title": "项目管理", "desc": "创建和管理测试项目与团队"},
+      "testManagement": {"title": "测试管理", "desc": "测试用例/套件/评审/执行/报告"},
       "aiGeneration": {"title": "AI用例生成", "desc": "需求分析与 AI 生成测试用例"},
       "apiTesting": {"title": "接口测试", "desc": "HTTP/WebSocket 接口自动化测试"},
       "uiAutomation": {"title": "UI自动化测试", "desc": "Selenium/Playwright UI 自动化"},
       "dataFactory": {"title": "数据工厂", "desc": "80+ 测试数据生成工具"},
       "appAutomation": {"title": "APP自动化测试", "desc": "Android APP 自动化测试"},
+      "performance": {"title": "性能测试", "desc": "并发压测与性能指标分析"},
       "aiIntelligent": {"title": "AI智能模式", "desc": "Browser-Use AI 驱动测试"},
       "aiReviewer": {"title": "AI评测师", "desc": "Dify AI 对话助手"},
       "configuration": {"title": "配置中心", "desc": "AI 模型/提示词/环境配置"}

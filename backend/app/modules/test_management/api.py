@@ -1,30 +1,37 @@
 """手工测试全生命周期管理 - API 路由"""
 from __future__ import annotations
 
-import os
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
-from sqlalchemy import select
+from sqlalchemy import case, func, select, cast
+from sqlalchemy.types import Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.modules.auth.dependencies import get_current_user
+from app.modules.rbac.service import require_permission
 
 from .crud import (
     batch_delete_cases, create_attachment, create_case, create_comment,
-    create_report, create_review, create_step, create_suite, create_version,
-    delete_case, delete_comment, delete_report, delete_review,
-    delete_step, delete_suite, delete_version, get_case,
+    create_report, create_report_template, create_review, create_step,
+    create_suite, create_version,
+    delete_case, delete_comment, delete_report, delete_report_template,
+    delete_review, delete_review_template, delete_step, delete_suite,
+    delete_version, get_case,
     get_case_comment_count, get_case_step_count, get_cases,
-    get_my_review_tasks, get_plan, get_plans, get_report, get_review,
-    get_reviews, get_run, get_reports, get_suite, get_suites,
+    get_my_review_tasks, get_plan, get_plans, get_report,
+    get_report_template, get_report_templates, get_review,
+    get_review_template, get_review_templates,
+    get_reviews, get_run, get_runs, get_reports, get_suite, get_suites,
     get_test_management_dashboard_stats, get_version, get_versions,
-    submit_review_assignment, update_case, update_plan, update_report,
-    update_review, update_run_case, update_step, update_suite,
-    update_version,
+    create_run, create_review_assignments,
+    submit_review_assignment, update_case, update_plan,
+    update_report_template,
+    update_review, update_review_template, update_run_case, update_step,
+    update_suite, update_version,
 )
 from .models import (
     TestManagementCaseAttachment, TestManagementCaseComment,
@@ -36,8 +43,8 @@ from .schemas import (
     ReportCreate, ReportResponse,
     ReviewCommentCreate, ReviewCommentResponse,
     ReviewCreate, ReviewDetailResponse, ReviewResponse,
-    ReviewTemplateCreate, ReviewTemplateResponse,
-    ReviewUpdate, RunCaseUpdate, RunResponse,
+    ReviewTemplateCreate, ReviewTemplateResponse, ReportTemplateResponse,
+    ReviewUpdate, ReviewAssignersCreate, ReportTemplateUpdate, RunCaseUpdate, RunResponse,
     TestCaseAttachmentResponse, TestCaseCommentCreate,
     TestCaseCommentResponse, TestCaseCreate, TestCaseDetailResponse,
     TestCaseListResponse, TestCaseStepResponse, TestCaseUpdate,
@@ -47,7 +54,7 @@ from .schemas import (
 )
 
 router = APIRouter(
-    prefix="/api/test-management",
+    prefix="/test-management",
     dependencies=[Depends(get_current_user)],
     tags=["test-management"],
 )
@@ -62,14 +69,142 @@ router = APIRouter(
 async def dashboard_stats(
     project_id: int | None = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取测试管理仪表盘统计"""
-    return await get_test_management_dashboard_stats(db, project_id)
+    return await get_test_management_dashboard_stats(db, project_id, current_user.id)
 
 
-# ==============================
-# 测试用例 CRUD
-# ==============================
+@router.get("/dashboard/execution-trend")
+async def execution_trend(
+    project_id: int | None = Query(None),
+    days: int = Query(7, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """每日执行趋势（默认 7 天）"""
+    from datetime import timedelta, datetime, date
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days - 1)
+
+    from .models import TestManagementRunCase
+
+    query = (
+        select(
+            cast(TestManagementRunCase.executed_at, Date).label("exec_date"),
+            func.count(TestManagementRunCase.id).label("total"),
+            func.sum(case((TestManagementRunCase.status == "passed", 1), else_=0)).label("passed"),
+            func.sum(case((TestManagementRunCase.status == "failed", 1), else_=0)).label("failed"),
+        )
+        .where(cast(TestManagementRunCase.executed_at, Date) >= start_date)
+        .where(cast(TestManagementRunCase.executed_at, Date) <= end_date)
+        .group_by("exec_date")
+        .order_by("exec_date")
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    date_map = {row.exec_date: {"total": row.total, "passed": row.passed, "failed": row.failed} for row in rows}
+
+    data = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        row_data = date_map.get(d, {"total": 0, "passed": 0, "failed": 0})
+        data.append({"date": d.isoformat(), **row_data})
+
+    return {"data": data}
+
+
+@router.get("/dashboard/status-distribution")
+async def status_distribution(
+    project_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """执行状态分布"""
+    from .models import TestManagementRunCase, TestManagementRun
+
+    query = select(
+        TestManagementRunCase.status,
+        func.count(TestManagementRunCase.id),
+    )
+
+    if project_id:
+        query = query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)
+        from .models import TestManagementPlan
+        query = query.join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)
+        query = query.where(TestManagementPlan.project_id == project_id)
+
+    query = query.group_by(TestManagementRunCase.status)
+    result = await db.execute(query)
+
+    distribution = {row[0]: row[1] for row in result.all()}
+
+    return distribution
+
+
+@router.get("/dashboard/failed-top10")
+async def failed_top10(
+    project_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """失败次数最多的 TOP10 用例"""
+    from .models import TestManagementRunCase, TestManagementCase, TestManagementRun
+
+    query = (
+        select(
+            TestManagementCase.id,
+            TestManagementCase.title,
+            func.count(TestManagementRunCase.id).label("fail_count"),
+        )
+        .join(TestManagementRunCase, TestManagementRunCase.case_id == TestManagementCase.id)
+        .where(TestManagementRunCase.status == "failed")
+        .group_by(TestManagementCase.id)
+        .order_by(func.count(TestManagementRunCase.id).desc())
+        .limit(10)
+    )
+
+    if project_id:
+        from .models import TestManagementPlan
+        query = query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)
+        query = query.join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)
+        query = query.where(TestManagementPlan.project_id == project_id)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    return {"data": [{"case_id": r.id, "title": r.title, "fail_count": r.fail_count} for r in rows]}
+
+
+@router.get("/dashboard/execution-summary")
+async def execution_summary(
+    project_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """执行汇总统计"""
+    from .models import TestManagementRunCase, TestManagementRun, TestManagementPlan
+
+    base_query = select(TestManagementRunCase)
+    if project_id:
+        base_query = base_query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)
+        base_query = base_query.join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)
+        base_query = base_query.where(TestManagementPlan.project_id == project_id)
+
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total = (await db.execute(count_query)).scalar() or 0
+
+    stats = {"total": total, "passed": 0, "failed": 0, "blocked": 0, "untested": 0}
+    for status in ["passed", "failed", "blocked", "untested"]:
+        q = base_query.where(TestManagementRunCase.status == status)
+        cnt = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar() or 0
+        stats[status] = cnt
+
+    return stats
 
 
 @router.get("/cases", response_model=dict)
@@ -82,6 +217,7 @@ async def list_cases(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取项目下的测试用例列表（分页+筛选）"""
     skip = (page - 1) * page_size
@@ -103,7 +239,7 @@ async def list_cases(
 
 
 @router.get("/cases/{case_id}", response_model=TestCaseDetailResponse)
-async def retrieve_case(case_id: int, db: AsyncSession = Depends(get_db)):
+async def retrieve_case(case_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
     """获取测试用例详情"""
     case = await get_case(db, case_id)
     if not case:
@@ -117,6 +253,7 @@ async def create_new_case(
     data: TestCaseCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """创建测试用例"""
     case = await create_case(db, project_id, current_user.id, data.model_dump())
@@ -129,6 +266,7 @@ async def update_existing_case(
     case_id: int,
     data: TestCaseUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.edit")),
 ):
     """更新测试用例"""
     case = await get_case(db, case_id)
@@ -140,7 +278,7 @@ async def update_existing_case(
 
 
 @router.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_case(case_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_existing_case(case_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
     """删除测试用例"""
     case = await get_case(db, case_id)
     if not case:
@@ -152,9 +290,111 @@ async def delete_existing_case(case_id: int, db: AsyncSession = Depends(get_db))
 async def batch_delete_cases_endpoint(
     ids: list[int],
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.delete")),
 ):
     """批量删除测试用例"""
     await batch_delete_cases(db, ids)
+
+
+# ==============================
+# Excel 导入/导出
+# ==============================
+
+
+@router.get("/cases/export")
+async def export_cases_excel(
+    project_id: int = Query(...),
+    status: str | None = Query(None),
+    priority: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """导出测试用例为 Excel（含步骤）"""
+    from app.services.excel_exporter import export_test_cases_excel
+    from fastapi.responses import Response
+
+    # 查询当前项目下所有符合条件的用例（最多 10000 条）
+    cases, _ = await get_cases(db, project_id, status=status, priority=priority, skip=0, limit=10000)
+
+    try:
+        excel_data = export_test_cases_excel(cases)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出失败: {e}")
+
+    return Response(
+        content=excel_data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=test_cases_project_{project_id}.xlsx"},
+    )
+
+
+@router.post("/cases/import", status_code=status.HTTP_201_CREATED)
+async def import_cases_excel(
+    project_id: int = Query(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
+):
+    """从 Excel 导入测试用例（含步骤）"""
+    from openpyxl import load_workbook
+    import io
+    from .crud import create_case
+
+    # 校验文件格式
+    if not file.filename or not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="仅支持 .xlsx / .xls 文件")
+
+    content = await file.read()
+    wb = load_workbook(io.BytesIO(content), read_only=True)
+    ws = wb.active
+
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    if not rows:
+        wb.close()
+        raise HTTPException(status_code=400, detail="Excel 文件为空")
+
+    created = 0
+    errors = []
+    for i, row in enumerate(rows, start=2):
+        if not row or not row[0]:
+            continue
+        try:
+            title = str(row[0]).strip()
+            if not title:
+                continue
+            # 截断标题防止过长
+            title = title[:500]
+
+            case_data = {
+                "title": title,
+                "description": str(row[1]) if len(row) > 1 and row[1] else "",
+                "preconditions": str(row[2]) if len(row) > 2 and row[2] else "",
+                "priority": str(row[3]).upper() if len(row) > 3 and row[3] else "MEDIUM",
+                "case_type": str(row[4]) if len(row) > 4 and row[4] else "",
+                "steps": [],
+            }
+
+            # 解析步骤（第6列为操作，第7列为预期结果，支持多步骤用换行分隔）
+            if len(row) > 6 and row[5] and row[6]:
+                actions = str(row[5]).split("\n")
+                expected = str(row[6]).split("\n")
+                for si, act in enumerate(actions):
+                    act = act.strip()
+                    if act:
+                        case_data["steps"].append({
+                            "step_number": si + 1,
+                            "action": act,
+                            "expected_result": expected[si].strip() if si < len(expected) else "",
+                        })
+
+            await create_case(db, project_id, current_user.id, case_data)
+            created += 1
+        except Exception as e:
+            errors.append(f"第{i}行: {e}")
+
+    wb.close()
+    return {"created": created, "errors": errors, "total": len(rows)}
 
 
 # ==============================
@@ -169,6 +409,7 @@ async def create_new_step(
     action: str = Query(...),
     expected_result: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """添加测试步骤"""
     case = await get_case(db, case_id)
@@ -184,6 +425,7 @@ async def create_new_step(
 async def update_existing_step(
     case_id: int, step_id: int, data: dict,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.edit")),
 ):
     """更新测试步骤"""
     step = await db.get(TestManagementCaseStep, step_id)
@@ -197,6 +439,7 @@ async def update_existing_step(
 async def delete_existing_step(
     case_id: int, step_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.delete")),
 ):
     """删除测试步骤"""
     step = await db.get(TestManagementCaseStep, step_id)
@@ -211,7 +454,7 @@ async def delete_existing_step(
 
 
 @router.get("/cases/{case_id}/comments", response_model=list[TestCaseCommentResponse])
-async def list_case_comments(case_id: int, db: AsyncSession = Depends(get_db)):
+async def list_case_comments(case_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
     """获取用例评论"""
     case = await get_case(db, case_id)
     if not case:
@@ -225,6 +468,7 @@ async def create_case_comment(
     data: TestCaseCommentCreate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """添加评论"""
     case = await get_case(db, case_id)
@@ -239,6 +483,7 @@ async def delete_case_comment(
     case_id: int, comment_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.delete")),
 ):
     """删除评论"""
     comment = await db.get(TestManagementCaseComment, comment_id)
@@ -260,6 +505,7 @@ async def upload_case_attachment(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """上传测试用例附件"""
     case = await get_case(db, case_id)
@@ -292,6 +538,7 @@ async def upload_case_attachment(
 async def delete_case_attachment(
     case_id: int, attachment_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.delete")),
 ):
     """删除附件"""
     att = await db.get(TestManagementCaseAttachment, attachment_id)
@@ -316,6 +563,7 @@ async def list_suites(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取项目下的测试套件列表"""
     skip = (page - 1) * page_size
@@ -329,7 +577,7 @@ async def list_suites(
 
 
 @router.get("/suites/{suite_id}", response_model=TestSuiteDetailResponse)
-async def retrieve_suite(suite_id: int, db: AsyncSession = Depends(get_db)):
+async def retrieve_suite(suite_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
     """获取套件详情"""
     suite = await get_suite(db, suite_id)
     if not suite:
@@ -345,6 +593,7 @@ async def create_new_suite(
     data: TestSuiteCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """创建测试套件"""
     suite = await create_suite(db, project_id, current_user.id, data.model_dump())
@@ -352,7 +601,7 @@ async def create_new_suite(
 
 
 @router.put("/suites/{suite_id}", response_model=TestSuiteResponse)
-async def update_existing_suite(suite_id: int, data: TestSuiteUpdate, db: AsyncSession = Depends(get_db)):
+async def update_existing_suite(suite_id: int, data: TestSuiteUpdate, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.edit"))):
     """更新套件"""
     suite = await get_suite(db, suite_id)
     if not suite:
@@ -362,7 +611,7 @@ async def update_existing_suite(suite_id: int, data: TestSuiteUpdate, db: AsyncS
 
 
 @router.delete("/suites/{suite_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_suite(suite_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_existing_suite(suite_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
     """删除套件"""
     suite = await get_suite(db, suite_id)
     if not suite:
@@ -381,6 +630,7 @@ async def list_versions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取版本列表"""
     skip = (page - 1) * page_size
@@ -396,6 +646,7 @@ async def create_new_version(
     data: VersionCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """创建版本"""
     version = await create_version(db, current_user.id, data.model_dump())
@@ -403,7 +654,7 @@ async def create_new_version(
 
 
 @router.put("/versions/{version_id}", response_model=VersionResponse)
-async def update_existing_version(version_id: int, data: VersionUpdate, db: AsyncSession = Depends(get_db)):
+async def update_existing_version(version_id: int, data: VersionUpdate, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.edit"))):
     """更新版本"""
     version = await get_version(db, version_id)
     if not version:
@@ -413,7 +664,7 @@ async def update_existing_version(version_id: int, data: VersionUpdate, db: Asyn
 
 
 @router.delete("/versions/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_version(version_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_existing_version(version_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
     """删除版本"""
     version = await get_version(db, version_id)
     if not version:
@@ -433,6 +684,7 @@ async def list_reviews(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取评审列表"""
     skip = (page - 1) * page_size
@@ -447,6 +699,7 @@ async def list_reviews(
 async def my_review_tasks(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取我的评审任务"""
     reviews = await get_my_review_tasks(db, current_user.id)
@@ -454,7 +707,7 @@ async def my_review_tasks(
 
 
 @router.get("/reviews/{review_id}", response_model=ReviewDetailResponse)
-async def retrieve_review(review_id: int, db: AsyncSession = Depends(get_db)):
+async def retrieve_review(review_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
     """获取评审详情"""
     review = await get_review(db, review_id)
     if not review:
@@ -472,6 +725,7 @@ async def create_new_review(
     data: ReviewCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """创建评审"""
     review = await create_review(db, current_user.id, data.model_dump())
@@ -479,7 +733,7 @@ async def create_new_review(
 
 
 @router.put("/reviews/{review_id}", response_model=ReviewResponse)
-async def update_existing_review(review_id: int, data: ReviewUpdate, db: AsyncSession = Depends(get_db)):
+async def update_existing_review(review_id: int, data: ReviewUpdate, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.edit"))):
     """更新评审"""
     review = await get_review(db, review_id)
     if not review:
@@ -489,7 +743,7 @@ async def update_existing_review(review_id: int, data: ReviewUpdate, db: AsyncSe
 
 
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_review(review_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_existing_review(review_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
     """删除评审"""
     review = await get_review(db, review_id)
     if not review:
@@ -503,6 +757,7 @@ async def submit_review(
     data: dict,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.review")),
 ):
     """提交评审意见"""
     result = await db.execute(
@@ -517,6 +772,29 @@ async def submit_review(
     return {"message": "评审已提交"}
 
 
+@router.post("/reviews/{review_id}/assign-reviewers")
+async def assign_reviewers(
+    review_id: int,
+    data: ReviewAssignersCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.review")),
+):
+    """为评审分配评审人"""
+    review = await get_review(db, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="评审不存在")
+
+    assignments = await create_review_assignments(db, review_id, data.reviewer_ids)
+
+    # 若评审处于草稿状态则更新为进行中
+    if review.status == "draft":
+        review.status = "in_progress"
+        await db.flush()
+
+    return {"message": "评审人已分配", "count": len(assignments)}
+
+
 # ==============================
 # 执行管理
 # ==============================
@@ -525,13 +803,15 @@ async def submit_review(
 @router.get("/plans", response_model=dict)
 async def list_plans(
     project_id: int = Query(...),
+    search: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取测试计划列表"""
     skip = (page - 1) * page_size
-    plans, total = await get_plans(db, project_id, skip, page_size)
+    plans, total = await get_plans(db, project_id, skip, page_size, search)
     items = []
     for p in plans:
         item = PlanResponse.model_validate(p)
@@ -541,7 +821,7 @@ async def list_plans(
 
 
 @router.get("/plans/{plan_id}", response_model=PlanResponse)
-async def retrieve_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
+async def retrieve_plan(plan_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
     """获取计划详情"""
     plan = await get_plan(db, plan_id)
     if not plan:
@@ -556,6 +836,7 @@ async def create_new_plan(
     data: PlanCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """创建测试计划"""
     plan = await create_plan(db, current_user.id, data.model_dump())
@@ -563,7 +844,7 @@ async def create_new_plan(
 
 
 @router.put("/plans/{plan_id}", response_model=PlanResponse)
-async def update_existing_plan(plan_id: int, data: PlanUpdate, db: AsyncSession = Depends(get_db)):
+async def update_existing_plan(plan_id: int, data: PlanUpdate, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.edit"))):
     """更新计划"""
     plan = await get_plan(db, plan_id)
     if not plan:
@@ -573,7 +854,7 @@ async def update_existing_plan(plan_id: int, data: PlanUpdate, db: AsyncSession 
 
 
 @router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_existing_plan(plan_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
     """删除计划"""
     plan = await get_plan(db, plan_id)
     if not plan:
@@ -581,8 +862,83 @@ async def delete_existing_plan(plan_id: int, db: AsyncSession = Depends(get_db))
     await delete_plan(db, plan)
 
 
+@router.post("/plans/{plan_id}/execute")
+async def execute_plan(
+    plan_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.execute")),
+):
+    """执行测试计划：基于计划创建新的执行轮次"""
+    plan = await get_plan(db, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+
+    # 从计划下所有现有运行的 run_cases 收集用例 ID
+    from .models import TestManagementRunCase
+
+    run_ids = [r.id for r in plan.runs]
+    if not run_ids:
+        raise HTTPException(status_code=400, detail="计划下尚无运行记录，无法执行")
+
+    result = await db.execute(
+        select(TestManagementRunCase.case_id)
+        .where(TestManagementRunCase.run_id.in_(run_ids))
+        .distinct()
+    )
+    case_ids = [row[0] for row in result.all()]
+    if not case_ids:
+        raise HTTPException(status_code=400, detail="计划中无测试用例，无法执行")
+
+    run = await create_run(
+        db, plan_id,
+        name=f"{plan.name} - 第{len(plan.runs) + 1}轮",
+        assignee_id=None,
+        case_ids=case_ids,
+    )
+    return {
+        "id": run.id,
+        "plan_id": run.plan_id,
+        "name": run.name,
+        "status": run.status,
+        "case_count": len(case_ids),
+    }
+
+
+@router.get("/runs", response_model=dict)
+async def list_runs(
+    plan_id: int | None = Query(None),
+    status: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """获取执行列表"""
+    skip = (page - 1) * page_size
+    runs, total = await get_runs(db, plan_id, status, skip, page_size)
+    items = []
+    for r in runs:
+        cases = r.run_cases or []
+        items.append({
+            "id": r.id,
+            "plan_id": r.plan_id,
+            "name": r.name,
+            "assignee_id": r.assignee_id,
+            "status": r.status,
+            "total_cases": len(cases),
+            "passed": sum(1 for c in cases if c.status == "passed"),
+            "failed": sum(1 for c in cases if c.status == "failed"),
+            "blocked": sum(1 for c in cases if c.status == "blocked"),
+            "untested": sum(1 for c in cases if c.status == "untested"),
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else None,
+            "updated_at": r.updated_at.strftime("%Y-%m-%d %H:%M:%S") if r.updated_at else None,
+        })
+    return {"count": total, "results": items}
+
+
 @router.get("/runs/{run_id}")
-async def retrieve_run(run_id: int, db: AsyncSession = Depends(get_db)):
+async def retrieve_run(run_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
     """获取执行详情（含用例级数据）"""
     run = await get_run(db, run_id)
     if not run:
@@ -613,6 +969,7 @@ async def update_run_case_status(
     data: RunCaseUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.edit")),
 ):
     """更新执行用例状态"""
     run_case = await db.get(TestManagementRunCase, run_case_id)
@@ -633,6 +990,7 @@ async def list_reports(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
 ):
     """获取报告列表"""
     skip = (page - 1) * page_size
@@ -649,6 +1007,7 @@ async def create_new_report(
     data: ReportCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _=Depends(require_permission("test_mgmt.create")),
 ):
     """创建报告"""
     report = await create_report(db, project_id, current_user.id, data.model_dump())
@@ -656,9 +1015,119 @@ async def create_new_report(
 
 
 @router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_existing_report(report_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_existing_report(report_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
     """删除报告"""
     report = await get_report(db, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="报告不存在")
     await delete_report(db, report)
+
+
+# ====== 评审模板 ======
+
+
+@router.get("/review-templates", response_model=dict)
+async def list_review_templates(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """获取评审模板列表"""
+    skip = (page - 1) * page_size
+    templates = await get_review_templates(db, skip, page_size)
+    return {"count": len(templates), "results": [ReviewTemplateResponse.model_validate(t) for t in templates]}
+
+
+@router.get("/review-templates/{template_id}", response_model=ReviewTemplateResponse)
+async def retrieve_review_template(template_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
+    """获取评审模板详情"""
+    tmpl = await get_review_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return ReviewTemplateResponse.model_validate(tmpl)
+
+
+@router.post("/review-templates", response_model=ReviewTemplateResponse, status_code=status.HTTP_201_CREATED)
+async def create_review_template_endpoint(data: ReviewTemplateCreate, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.create"))):
+    """创建评审模板"""
+    tmpl = await create_review_template(db, data.model_dump())
+    return ReviewTemplateResponse.model_validate(tmpl)
+
+
+@router.put("/review-templates/{template_id}", response_model=ReviewTemplateResponse)
+async def update_review_template_endpoint(template_id: int, data: ReviewTemplateCreate, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.edit"))):
+    """更新评审模板"""
+    tmpl = await get_review_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    tmpl = await update_review_template(db, tmpl, data.model_dump())
+    return ReviewTemplateResponse.model_validate(tmpl)
+
+
+@router.delete("/review-templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_review_template_endpoint(template_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
+    """删除评审模板"""
+    tmpl = await get_review_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    await delete_review_template(db, tmpl)
+
+
+# ====== 报告模板 ======
+
+
+@router.get("/report-templates", response_model=dict)
+async def list_report_templates(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.view")),
+):
+    """获取报告模板列表"""
+    skip = (page - 1) * page_size
+    templates = await get_report_templates(db, skip, page_size)
+    return {
+        "count": len(templates),
+        "results": [t.model_dump() if hasattr(t, 'model_dump') else {"id": t.id, "name": t.name} for t in templates],
+    }
+
+
+@router.post("/report-templates", status_code=status.HTTP_201_CREATED)
+async def create_report_template_endpoint(data: dict, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.create"))):
+    """创建报告模板"""
+    tmpl = await create_report_template(db, data)
+    return tmpl
+
+
+@router.get("/report-templates/{template_id}", response_model=ReportTemplateResponse)
+async def retrieve_report_template(template_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.view"))):
+    """获取报告模板详情"""
+    tmpl = await get_report_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="报告模板不存在")
+    return ReportTemplateResponse.model_validate(tmpl)
+
+
+@router.put("/report-templates/{template_id}", response_model=ReportTemplateResponse)
+async def update_report_template_endpoint(
+    template_id: int,
+    data: ReportTemplateUpdate,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("test_mgmt.edit")),
+):
+    """更新报告模板"""
+    tmpl = await get_report_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="报告模板不存在")
+    tmpl = await update_report_template(db, tmpl, data.model_dump(exclude_unset=True, mode="json"))
+    return ReportTemplateResponse.model_validate(tmpl)
+
+
+@router.delete("/report-templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report_template_endpoint(template_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_permission("test_mgmt.delete"))):
+    """删除报告模板"""
+    tmpl = await get_report_template(db, template_id)
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    await delete_report_template(db, tmpl)

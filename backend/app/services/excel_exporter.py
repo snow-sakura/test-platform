@@ -71,3 +71,67 @@ def export_test_cases_to_excel(cases: list) -> bytes:
     output = BytesIO()
     wb.save(output)
     return output.getvalue()
+
+
+def export_test_cases_excel(cases: list) -> bytes:
+    """导出测试用例列表为 Excel（含步骤），适配 TestManagementCase 模型
+
+    Args:
+        cases: TestManagementCase 模型对象列表（含 steps 关系）
+
+    Returns:
+        Excel 文件字节流
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "测试用例"
+
+    # 表头样式
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    cell_alignment = Alignment(vertical="top", wrap_text=True)
+
+    # 表头
+    headers = ["用例标题", "描述", "前置条件", "优先级", "类型", "步骤-操作", "步骤-预期结果", "状态"]
+    col_widths = [35, 25, 20, 10, 12, 35, 35, 10]
+
+    for col_idx, (header, width) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+        ws.column_dimensions[chr(64 + col_idx)].width = width
+
+    # 数据行：一个用例可能占多行（每步骤一行）
+    row_num = 2
+    for case in cases:
+        steps = getattr(case, 'steps', [])
+        if steps:
+            for step in steps:
+                ws.cell(row=row_num, column=1, value=case.title).alignment = cell_alignment
+                ws.cell(row=row_num, column=2, value=case.description or "").alignment = cell_alignment
+                ws.cell(row=row_num, column=3, value=case.preconditions or "").alignment = cell_alignment
+                ws.cell(row=row_num, column=4, value=case.priority)
+                ws.cell(row=row_num, column=5, value=case.case_type or "")
+                ws.cell(row=row_num, column=6, value=step.action).alignment = cell_alignment
+                ws.cell(row=row_num, column=7, value=step.expected_result).alignment = cell_alignment
+                ws.cell(row=row_num, column=8, value=case.status)
+                row_num += 1
+        else:
+            # 无步骤的用例占一行
+            ws.cell(row=row_num, column=1, value=case.title).alignment = cell_alignment
+            ws.cell(row=row_num, column=2, value=case.description or "").alignment = cell_alignment
+            ws.cell(row=row_num, column=3, value=case.preconditions or "").alignment = cell_alignment
+            ws.cell(row=row_num, column=4, value=case.priority)
+            ws.cell(row=row_num, column=5, value=case.case_type or "")
+            ws.cell(row=row_num, column=8, value=case.status)
+            row_num += 1
+
+    # 冻结首行
+    ws.freeze_panes = "A2"
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()

@@ -18,6 +18,16 @@ from app.modules.knowledge_bases.api import router as knowledge_bases_router
 from app.modules.settings.api import router as settings_router
 from app.modules.api_testing.api import router as api_testing_router
 from app.modules.test_management.api import router as test_management_router
+from app.modules.ui_automation.api import router as ui_automation_router
+from app.modules.app_automation.api import router as app_automation_router
+from app.modules.ai_smart_mode.api import router as ai_smart_router
+from app.modules.data_factory.api import router as data_factory_router
+from app.modules.ai_evaluator.api import router as ai_evaluator_router
+from app.modules.requirement_analysis.api import router as requirement_analysis_router
+from app.modules.notification_configs.api import router as notification_configs_router
+from app.modules.dashboard.api import router as dashboard_router
+from app.modules.rbac.api import router as rbac_router
+
 
 
 @asynccontextmanager
@@ -67,3 +77,12 @@ app.include_router(knowledge_bases_router, prefix=settings.API_PREFIX)
 app.include_router(settings_router, prefix=settings.API_PREFIX)
 app.include_router(api_testing_router, prefix=settings.API_PREFIX)
 app.include_router(test_management_router, prefix=settings.API_PREFIX)
+app.include_router(ui_automation_router, prefix=settings.API_PREFIX)
+app.include_router(app_automation_router, prefix=settings.API_PREFIX)
+app.include_router(ai_smart_router, prefix=settings.API_PREFIX)
+app.include_router(data_factory_router, prefix=settings.API_PREFIX)
+app.include_router(ai_evaluator_router, prefix=settings.API_PREFIX)
+app.include_router(requirement_analysis_router, prefix=settings.API_PREFIX)
+app.include_router(notification_configs_router, prefix=settings.API_PREFIX)
+app.include_router(dashboard_router, prefix=settings.API_PREFIX)
+app.include_router(rbac_router, prefix=settings.API_PREFIX)

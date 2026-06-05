@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Button, Table, Tag, Space, message, Modal, Select, Input, Row, Col, Popconfirm,
+  Button, Table, Tag, Space, message, Modal, Select, Input, Row, Col, Popconfirm, Upload,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, SearchOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { getCases, deleteCase, batchDeleteCases } from '@/lib/api/test-management';
+import { getCases, deleteCase, batchDeleteCases, exportCasesExcel, importCasesExcel } from '@/lib/api/test-management';
 import { getApiProjects } from '@/lib/api/api-testing';
 import type { TestCaseListItem } from '@/lib/api/test-management';
 import type { ApiProject } from '@/lib/api/api-testing';
@@ -80,6 +80,50 @@ export default function CaseListPage() {
     } catch {
       message.error('删除失败');
     }
+  };
+
+  // 导出 Excel
+  const handleExport = async () => {
+    if (!projectId) return;
+    try {
+      const res = await exportCasesExcel({
+        project_id: projectId,
+        status: statusFilter,
+        priority: priorityFilter,
+      });
+      // 触发浏览器下载
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `test_cases_project_${projectId}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      message.success('导出成功');
+    } catch {
+      message.error('导出失败');
+    }
+  };
+
+  // 导入 Excel
+  const handleImport = async (file: File) => {
+    if (!projectId) return;
+    try {
+      const res = await importCasesExcel(projectId, file);
+      const data = res.data;
+      if (data.errors && data.errors.length > 0) {
+        message.warning(`导入完成：成功 ${data.created} 条，失败 ${data.errors.length} 条`);
+        console.error('导入错误:', data.errors);
+      } else {
+        message.success(`导入完成：成功 ${data.created} 条`);
+      }
+      loadCases();
+    } catch {
+      message.error('导入失败，请检查文件格式');
+    }
+    return false; // 阻止 Upload 默认上传行为
   };
 
   // 批量删除
@@ -202,6 +246,19 @@ export default function CaseListPage() {
                 删除 {selectedRowKeys.length} 项
               </Button>
             )}
+            <Upload
+              accept=".xlsx,.xls"
+              showUploadList={false}
+              beforeUpload={handleImport}
+              disabled={!projectId}
+            >
+              <Button icon={<UploadOutlined />} disabled={!projectId}>
+                导入 Excel
+              </Button>
+            </Upload>
+            <Button icon={<DownloadOutlined />} disabled={!projectId} onClick={handleExport}>
+              导出 Excel
+            </Button>
             <Button type="primary" icon={<PlusOutlined />}
               disabled={!projectId}
               onClick={() => router.push(`/${locale}/test-management/cases/create?project_id=${projectId}`)}

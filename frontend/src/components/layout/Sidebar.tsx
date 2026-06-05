@@ -16,6 +16,8 @@ import {
   MessageOutlined,
   SettingOutlined,
   FileTextOutlined,
+  ToolOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 
 export default function Sidebar() {
@@ -29,22 +31,21 @@ export default function Sidebar() {
     { key: '/home', icon: <HomeOutlined />, label: t('nav.home') },
     { key: '/projects', icon: <FolderOutlined />, label: t('nav.projects') },
     { type: 'divider' } as any,
-    { key: 'ai_generation', icon: <ThunderboltOutlined />, label: t('nav.aiGeneration') },
+    { key: '/ai-generation', icon: <ThunderboltOutlined />, label: t('nav.aiGeneration') },
     { key: '/api-testing', icon: <ApiOutlined />, label: t('nav.apiTesting') },
     { key: '/test-management', icon: <FileTextOutlined />, label: t('nav.testManagement') },
-    { key: 'ui_auto', icon: <MonitorOutlined />, label: t('nav.uiAutomation'), disabled: true },
-    { key: 'data_factory', icon: <DatabaseOutlined />, label: t('nav.dataFactory'), disabled: true },
-    { key: 'app_auto', icon: <MobileOutlined />, label: t('nav.appAutomation'), disabled: true },
-    { key: 'ai_intel', icon: <RobotOutlined />, label: t('nav.aiIntelligent'), disabled: true },
-    { key: 'ai_review', icon: <MessageOutlined />, label: t('nav.aiReviewer'), disabled: true },
+    { key: '/ui-automation', icon: <MonitorOutlined />, label: t('nav.uiAutomation') },
+    { key: '/app-automation', icon: <MobileOutlined />, label: t('nav.appAutomation') },
+    { key: '/performance', icon: <BarChartOutlined />, label: t('nav.performance') || '性能测试' },
+    { key: '/ai-smart', icon: <RobotOutlined />, label: t('nav.aiIntelligent') },
+    { key: '/ai-evaluator', icon: <MessageOutlined />, label: t('nav.aiReviewer') },
+    { key: '/data-factory', icon: <ToolOutlined />, label: t('nav.dataFactory') || '数据工厂' },
     { key: '/settings', icon: <SettingOutlined />, label: t('nav.configuration') },
   ];
 
   const onClick: MenuProps['onClick'] = (info) => {
     if (info.key.startsWith('/')) {
       router.push(info.key);
-    } else if (info.key === 'ai_generation') {
-      router.push('/projects');
     } else {
       message.info(t('common.comingSoon'));
     }

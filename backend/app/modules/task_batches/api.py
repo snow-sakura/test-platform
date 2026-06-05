@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.modules.auth.dependencies import get_current_user
+from app.modules.rbac.service import require_permission
+from app.pagination import PageParams, PaginatedResponse
 
 from .crud import get_batch, get_batches, get_project_batches, update_batch_status
 from .schemas import TaskBatchResponse
@@ -11,19 +13,21 @@ from .schemas import TaskBatchResponse
 router = APIRouter(dependencies=[Depends(get_current_user)], tags=["batches"])
 
 
-@router.get("/batches", response_model=list[TaskBatchResponse])
+@router.get("/batches", response_model=PaginatedResponse[TaskBatchResponse])
 async def list_batches(
+    page_params: PageParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("taskbatch.view")),
 ):
     """获取所有任务批次"""
-    batches = await get_batches(db)
-    return [TaskBatchResponse.model_validate(b) for b in batches]
+    return await get_batches(db, page_params)
 
 
 @router.get("/batches/{batch_id}", response_model=TaskBatchResponse)
 async def retrieve_batch(
     batch_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("taskbatch.view")),
 ):
     """获取批次详情"""
     batch = await get_batch(db, batch_id)
@@ -32,20 +36,22 @@ async def retrieve_batch(
     return TaskBatchResponse.model_validate(batch)
 
 
-@router.get("/batches/project/{project_id}", response_model=list[TaskBatchResponse])
+@router.get("/batches/project/{project_id}", response_model=PaginatedResponse[TaskBatchResponse])
 async def list_project_batches(
     project_id: int,
+    page_params: PageParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("taskbatch.view")),
 ):
     """获取项目下的任务批次列表"""
-    batches = await get_project_batches(db, project_id)
-    return [TaskBatchResponse.model_validate(b) for b in batches]
+    return await get_project_batches(db, project_id, page_params)
 
 
 @router.put("/batches/{batch_id}/cancel", response_model=TaskBatchResponse)
 async def cancel_batch(
     batch_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("taskbatch.delete")),
 ):
     """取消任务批次（仅 PENDING/RUNNING 状态可取消）"""
     batch = await get_batch(db, batch_id)

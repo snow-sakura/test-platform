@@ -16,12 +16,19 @@ export interface TaskBatch {
 
 /** 获取所有任务批次 */
 export function getBatches() {
-  return request.get<TaskBatch[]>('/api/batches');
+  return request.get<PaginatedResponse<TaskBatch>>('/api/batches');
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
 
 /** 获取项目下的任务批次 */
 export function getProjectBatches(projectId: number) {
-  return request.get<TaskBatch[]>(`/api/batches/project/${projectId}`);
+  return request.get<PaginatedResponse<TaskBatch>>(`/api/batches/project/${projectId}`);
 }
 
 /** 获取批次详情 */

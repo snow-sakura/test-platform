@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs } from 'antd';
-import { TagsOutlined, FileTextOutlined, AppstoreOutlined, TeamOutlined, PlayCircleOutlined, BarChartOutlined } from '@ant-design/icons';
+import { TagsOutlined, FileTextOutlined, AppstoreOutlined, TeamOutlined, PlayCircleOutlined, BarChartOutlined, SnippetsOutlined, FileProtectOutlined } from '@ant-design/icons';
 
 export default function TestManagementLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -18,7 +18,9 @@ export default function TestManagementLayout({ children }: { children: ReactNode
     if (p.startsWith('/suites')) return 'suites';
     if (p.startsWith('/versions')) return 'versions';
     if (p.startsWith('/reviews')) return 'reviews';
+    if (p.startsWith('/review-templates')) return 'review-templates';
     if (p.startsWith('/executions')) return 'executions';
+    if (p.startsWith('/report-templates')) return 'report-templates';
     if (p.startsWith('/reports')) return 'reports';
     return 'cases';
   };
@@ -34,7 +36,9 @@ export default function TestManagementLayout({ children }: { children: ReactNode
           { key: 'suites', label: <><AppstoreOutlined /> 测试套件</> },
           { key: 'versions', label: <><TagsOutlined /> 版本管理</> },
           { key: 'reviews', label: <><TeamOutlined /> 评审管理</> },
+          { key: 'review-templates', label: <><SnippetsOutlined /> 评审模板</> },
           { key: 'executions', label: <><PlayCircleOutlined /> 执行管理</> },
+          { key: 'report-templates', label: <><FileProtectOutlined /> 报告模板</> },
           { key: 'reports', label: <><BarChartOutlined /> 测试报告</> },
         ]}
       />

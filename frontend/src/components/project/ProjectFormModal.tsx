@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Form, Input, Select, DatePicker, message } from 'antd';
 import { useTranslations } from 'next-intl';
 import dayjs from 'dayjs';
 import { createProject, updateProject, Project } from '@/lib/api/project';
+import request from '@/lib/request';
 
 interface Props {
   open: boolean;
@@ -13,9 +14,24 @@ interface Props {
   onSuccess: () => void;
 }
 
+interface UserOption {
+  id: number;
+  username: string;
+}
+
 export default function ProjectFormModal({ open, project, onClose, onSuccess }: Props) {
   const t = useTranslations();
   const [form] = Form.useForm();
+  const [users, setUsers] = useState<UserOption[]>([]);
+
+  // 加载用户列表用于成员选择
+  useEffect(() => {
+    if (open) {
+      request.get<{ id: number; username: string }[]>('/api/auth/users')
+        .then((res) => setUsers(res.data || []))
+        .catch(() => {});
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -63,6 +79,7 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
       onOk={handleOk}
       onCancel={onClose}
       destroyOnClose
+      width={560}
     >
       <Form form={form} layout="vertical" initialValues={{ status: 'active' }}>
         <Form.Item
@@ -90,6 +107,17 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
         <Form.Item name="end_date" label={t('project.endDate')}>
           <DatePicker style={{ width: '100%' }} />
         </Form.Item>
+        {!project && (
+          <Form.Item name="member_ids" label="项目成员">
+            <Select
+              mode="multiple"
+              placeholder="选择项目成员（可选，创建者自动为管理员）"
+              options={users.map((u) => ({ label: u.username, value: u.id }))}
+              filterOption
+              showSearch
+            />
+          </Form.Item>
+        )}
       </Form>
     </Modal>
   );

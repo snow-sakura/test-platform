@@ -12,9 +12,14 @@ from app.database import Base
 class TaskBatch(Base):
     """异步任务批次表，记录 AI 提取/生成任务的进度与状态"""
     __tablename__ = "task_batches"
+    __table_args__ = {"comment": "异步任务批次"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="批次 ID"
+    )
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目 ID"
+    )
     task_type: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="任务类型: extract_test_points / generate_test_cases"
     )

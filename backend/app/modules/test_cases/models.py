@@ -13,11 +13,16 @@ from app.database import Base
 class TestCase(Base):
     """测试用例表，记录 AI 生成或手动创建的测试用例"""
     __tablename__ = "test_cases"
+    __table_args__ = {"comment": "测试用例"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="测试用例 ID"
+    )
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, comment="所属项目 ID"
+    )
     test_point_id: Mapped[int] = mapped_column(
-        ForeignKey("test_points.id"), nullable=False, comment="关联的测试点 ID"
+        ForeignKey("test_points.id", ondelete="CASCADE"), nullable=False, comment="关联的测试点 ID"
     )
     case_number: Mapped[str | None] = mapped_column(
         String(50), nullable=True, comment="用例编号: TC-{test_point_id}-{seq}"

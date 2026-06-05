@@ -1,6 +1,8 @@
 """测试管理模块 - 数据库 CRUD 操作"""
 from __future__ import annotations
 
+from datetime import date, datetime
+
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,6 +13,7 @@ from .models import (
     TestManagementCaseStep, TestManagementPlan, TestManagementReport,
     TestManagementReview, TestManagementReviewAssignment,
     TestManagementReviewComment, TestManagementReviewTemplate,
+    TestManagementReportTemplate,
     TestManagementRun, TestManagementRunCase, TestManagementRunCaseHistory,
     TestManagementSuite, TestManagementSuiteCase, TestManagementVersion,
     TestManagementVersionProject,
@@ -421,7 +424,7 @@ async def submit_review_assignment(
     assignment.status = "completed"
     assignment.comment = data.get("comment")
     assignment.checklist_results = data.get("checklist_results")
-    assignment.completed_at = func.now()
+    assignment.completed_at = datetime.utcnow()
     await db.flush()
 
     # 检查是否所有分配人都已完成
@@ -433,6 +436,19 @@ async def submit_review_assignment(
             await db.flush()
 
     return assignment
+
+
+async def create_review_assignments(
+    db: AsyncSession, review_id: int, reviewer_ids: list[int],
+) -> list[TestManagementReviewAssignment]:
+    """为评审批量分配评审人"""
+    assignments = []
+    for rid in reviewer_ids:
+        assignment = TestManagementReviewAssignment(review_id=review_id, reviewer_id=rid)
+        db.add(assignment)
+        assignments.append(assignment)
+    await db.flush()
+    return assignments
 
 
 # ==============================
@@ -473,11 +489,15 @@ async def get_plan(db: AsyncSession, plan_id: int) -> TestManagementPlan | None:
     return result.scalar_one_or_none()
 
 
-async def get_plans(db: AsyncSession, project_id: int, skip: int = 0, limit: int = 20) -> tuple[list[TestManagementPlan], int]:
+async def get_plans(
+    db: AsyncSession, project_id: int, skip: int = 0, limit: int = 20, search: str | None = None,
+) -> tuple[list[TestManagementPlan], int]:
     query = select(TestManagementPlan).where(TestManagementPlan.project_id == project_id)
+    if search:
+        query = query.where(TestManagementPlan.name.ilike(f"%{search}%"))
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     query = query.order_by(TestManagementPlan.created_at.desc()).offset(skip).limit(limit)
-    result = await db.execute(query)
+    result = await db.execute(query.options(selectinload(TestManagementPlan.runs)))
     plans = list(result.scalars().all())
     return plans, total
 
@@ -492,6 +512,26 @@ async def update_plan(db: AsyncSession, plan: TestManagementPlan, data: dict) ->
 async def delete_plan(db: AsyncSession, plan: TestManagementPlan) -> None:
     await db.delete(plan)
     await db.flush()
+
+
+async def get_runs(
+    db: AsyncSession,
+    plan_id: int | None = None,
+    status: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+) -> tuple[list[TestManagementRun], int]:
+    """获取执行列表"""
+    query = select(TestManagementRun)
+    if plan_id:
+        query = query.where(TestManagementRun.plan_id == plan_id)
+    if status:
+        query = query.where(TestManagementRun.status == status)
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
+    query = query.order_by(TestManagementRun.created_at.desc()).offset(skip).limit(limit)
+    result = await db.execute(query.options(selectinload(TestManagementRun.run_cases)))
+    runs = list(result.scalars().all())
+    return runs, total
 
 
 async def get_run(db: AsyncSession, run_id: int) -> TestManagementRun | None:
@@ -509,7 +549,7 @@ async def update_run_case(
     for key, value in data.items():
         setattr(run_case, key, value)
     run_case.executed_by = executed_by
-    run_case.executed_at = func.now()
+    run_case.executed_at = datetime.utcnow()
     await db.flush()
 
     # 记录历史
@@ -523,6 +563,28 @@ async def update_run_case(
     await db.flush()
 
     return run_case
+
+
+# ==============================
+# 运行（执行轮次）CRUD
+# ==============================
+
+
+async def create_run(
+    db: AsyncSession, plan_id: int, name: str,
+    assignee_id: int | None, case_ids: list[int],
+) -> TestManagementRun:
+    """创建执行（从计划发起）"""
+    run = TestManagementRun(
+        plan_id=plan_id, name=name,
+        assignee_id=assignee_id, status="pending",
+    )
+    db.add(run)
+    await db.flush()
+    for cid in case_ids:
+        db.add(TestManagementRunCase(run_id=run.id, case_id=cid, status="untested"))
+    await db.flush()
+    return run
 
 
 # ==============================
@@ -562,7 +624,9 @@ async def delete_report(db: AsyncSession, report: TestManagementReport) -> None:
 # ==============================
 
 
-async def get_test_management_dashboard_stats(db: AsyncSession, project_id: int | None = None) -> dict:
+async def get_test_management_dashboard_stats(
+    db: AsyncSession, project_id: int | None = None, current_user_id: int | None = None,
+) -> dict:
     """获取测试管理仪表盘统计数据"""
     # 用例总数
     query = select(func.count(TestManagementCase.id))
@@ -593,13 +657,131 @@ async def get_test_management_dashboard_stats(db: AsyncSession, project_id: int 
         select(func.count(TestManagementReview.id))
     )).scalar() or 0
 
+    # 今日执行数（统计 TestManagementRunCase 中 executed_at 为今日的记录）
+    query = select(func.count(TestManagementRunCase.id)).where(
+        func.date(TestManagementRunCase.executed_at) == date.today()
+    )
+    if project_id:
+        query = query.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)\
+            .join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)\
+            .where(TestManagementPlan.project_id == project_id)
+    today_executions = (await db.execute(query)).scalar() or 0
+
+    # 我的待审评审数
+    my_pending_reviews = 0
+    if current_user_id:
+        my_pending_reviews = (await db.execute(
+            select(func.count(TestManagementReviewAssignment.id))
+            .where(TestManagementReviewAssignment.reviewer_id == current_user_id)
+            .where(TestManagementReviewAssignment.status == "pending")
+        )).scalar() or 0
+
+    # 通过率（通过的 / 通过的 + 失败的）
+    pass_rate = 0.0
+    passed_q = select(func.count(TestManagementRunCase.id)).where(TestManagementRunCase.status == "passed")
+    failed_q = select(func.count(TestManagementRunCase.id)).where(TestManagementRunCase.status == "failed")
+    if project_id:
+        passed_q = passed_q.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)\
+            .join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)\
+            .where(TestManagementPlan.project_id == project_id)
+        failed_q = failed_q.join(TestManagementRun, TestManagementRunCase.run_id == TestManagementRun.id)\
+            .join(TestManagementPlan, TestManagementRun.plan_id == TestManagementPlan.id)\
+            .where(TestManagementPlan.project_id == project_id)
+    total_passed = (await db.execute(passed_q)).scalar() or 0
+    total_failed = (await db.execute(failed_q)).scalar() or 0
+    total_executed = total_passed + total_failed
+    if total_executed > 0:
+        pass_rate = total_passed / total_executed
+
     return {
         "total_cases": total_cases,
         "total_suites": total_suites,
         "total_plans": total_plans,
         "total_runs": total_runs,
         "total_reviews": total_reviews,
-        "my_pending_reviews": 0,
-        "pass_rate": 0.0,
-        "today_executions": 0,
+        "my_pending_reviews": my_pending_reviews,
+        "pass_rate": pass_rate,
+        "today_executions": today_executions,
     }
+
+
+# ==============================
+# 评审模板 CRUD
+# ==============================
+
+
+async def get_review_templates(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[TestManagementReviewTemplate]:
+    """获取评审模板列表"""
+    result = await db.execute(
+        select(TestManagementReviewTemplate).offset(skip).limit(limit).order_by(TestManagementReviewTemplate.id)
+    )
+    return list(result.scalars().all())
+
+
+async def get_review_template(db: AsyncSession, template_id: int) -> TestManagementReviewTemplate | None:
+    """获取单个评审模板"""
+    return await db.get(TestManagementReviewTemplate, template_id)
+
+
+async def create_review_template(db: AsyncSession, data: dict) -> TestManagementReviewTemplate:
+    """创建评审模板"""
+    tmpl = TestManagementReviewTemplate(**data)
+    db.add(tmpl)
+    await db.flush()
+    return tmpl
+
+
+async def update_review_template(db: AsyncSession, tmpl: TestManagementReviewTemplate, data: dict) -> TestManagementReviewTemplate:
+    """更新评审模板"""
+    for key, value in data.items():
+        setattr(tmpl, key, value)
+    await db.flush()
+    return tmpl
+
+
+async def delete_review_template(db: AsyncSession, tmpl: TestManagementReviewTemplate) -> None:
+    """删除评审模板"""
+    await db.delete(tmpl)
+
+
+# ==============================
+# 报告模板 CRUD
+# ==============================
+
+
+async def get_report_templates(db: AsyncSession, skip: int = 0, limit: int = 100):
+    """获取报告模板列表"""
+    from .models import TestManagementReportTemplate
+    result = await db.execute(
+        select(TestManagementReportTemplate).offset(skip).limit(limit).order_by(TestManagementReportTemplate.id)
+    )
+    return list(result.scalars().all())
+
+
+async def get_report_template(db: AsyncSession, template_id: int):
+    """获取单个报告模板"""
+    from .models import TestManagementReportTemplate
+    return await db.get(TestManagementReportTemplate, template_id)
+
+
+async def create_report_template(db: AsyncSession, data: dict):
+    """创建报告模板"""
+    from .models import TestManagementReportTemplate
+    tmpl = TestManagementReportTemplate(**data)
+    db.add(tmpl)
+    await db.flush()
+    return tmpl
+
+
+async def delete_report_template(db: AsyncSession, tmpl):
+    """删除报告模板"""
+    await db.delete(tmpl)
+
+
+async def update_report_template(db: AsyncSession, tmpl, data: dict):
+    """更新报告模板"""
+    from .models import TestManagementReportTemplate
+    for key, value in data.items():
+        setattr(tmpl, key, value)
+    await db.flush()
+    return tmpl

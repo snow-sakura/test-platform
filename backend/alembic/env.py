@@ -43,6 +43,40 @@ from app.modules.test_management.models import (  # noqa: F401
     TestManagementRunCase, TestManagementRunCaseHistory,
     TestManagementReport, TestManagementReportTemplate,
 )
+from app.modules.ui_automation.models import (  # noqa: F401
+    UiProject, UiElement, UiElementGroup, LocatorStrategy,
+    UiPageObject, UiPageObjectElement, UiTestScript, UiScriptStep,
+    UiScriptElementUsage, UiTestCase, UiTestSuite, UiTestSuiteCase,
+    UiTestExecution, UiScreenshot, UiOperationRecord,
+    UiScheduledTask, UiNotificationConfig, UiNotificationLog, UiEnvironment,
+)
+from app.modules.app_automation.models import (  # noqa: F401
+    AppProject, AppConfig, Device, AppPackage, AppImageCategory,
+    AppElement, AppTestCase, AppTestSuite, AppTestSuiteCase,
+    AppTestExecution, AppScreenshot, AppComponentLibrary,
+    AppScheduledTask, AppNotificationLog,
+)
+from app.modules.ai_smart_mode.models import (  # noqa: F401
+    AICase, AIExecutionRecord,
+)
+from app.modules.data_factory.models import (  # noqa: F401
+    DataFactoryRecord,
+)
+from app.modules.ai_evaluator.models import (  # noqa: F401
+    DifyConfig, AssistantSession, ChatMessage,
+)
+from app.modules.notification_configs.models import UnifiedNotificationConfig  # noqa: F401
+from app.modules.performance.models import (  # noqa: F401
+    PerformanceScenario, PerformanceExecution, PerformanceReport,
+)
+from app.modules.rbac.models import (  # noqa: F401
+    Permission, Role, RolePermission, UserRole,
+)
+from app.modules.requirement_analysis.models import (  # noqa: F401
+    RequirementDocument, RequirementAnalysis, BusinessRequirement,
+    GeneratedTestCase, AIModelConfig, PromptConfig, GenerationConfig,
+    TestCaseGenerationTask,
+)
 
 target_metadata = Base.metadata
 

@@ -12,6 +12,8 @@
     "antd": "^5.15",
     "axios": "^1.6",
     "dayjs": "^1.11.21",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
     "next": "^14.2",
     "next-intl": "^3.11",
     "react": "^18.3",

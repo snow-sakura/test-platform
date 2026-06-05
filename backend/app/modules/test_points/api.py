@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.projects.crud import get_project
+from app.modules.rbac.service import require_permission
+from app.pagination import PageParams, PaginatedResponse
 
 from .crud import (
     create_test_point, delete_test_point, get_test_point,
@@ -22,6 +24,7 @@ async def extract_test_points(
     data: dict,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testpoint.create")),
 ):
     """AI 提取测试点（异步），传入 {document_ids, knowledge_base_ids?}"""
     from app.modules.documents.crud import get_document
@@ -60,17 +63,18 @@ async def extract_test_points(
     return {"batch_id": batch.id, "message": "测试点提取任务已提交"}
 
 
-@router.get("/test-points/project/{project_id}", response_model=list[TestPointResponse])
+@router.get("/test-points/project/{project_id}", response_model=PaginatedResponse[TestPointResponse])
 async def list_test_points(
     project_id: int,
+    page_params: PageParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testpoint.view")),
 ):
     """获取项目下的测试点列表"""
     project = await get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
-    points = await get_test_points(db, project_id)
-    return [TestPointResponse.model_validate(p) for p in points]
+    return await get_test_points(db, project_id, page_params)
 
 
 @router.post("/test-points", response_model=TestPointResponse, status_code=status.HTTP_201_CREATED)
@@ -78,6 +82,7 @@ async def create_new_test_point(
     project_id: int = Query(..., description="所属项目 ID"),
     data: TestPointCreate = ...,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testpoint.create")),
 ):
     """手动创建测试点"""
     project = await get_project(db, project_id)
@@ -98,6 +103,7 @@ async def update_existing_test_point(
     tp_id: int,
     data: TestPointUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testpoint.edit")),
 ):
     """更新测试点"""
     tp = await get_test_point(db, tp_id)
@@ -111,6 +117,7 @@ async def update_existing_test_point(
 async def delete_existing_test_point(
     tp_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testpoint.delete")),
 ):
     """删除测试点"""
     tp = await get_test_point(db, tp_id)

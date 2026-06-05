@@ -9,6 +9,8 @@ from app.database import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.projects.crud import get_project
 from app.modules.test_points.crud import get_test_point
+from app.modules.rbac.service import require_permission
+from app.pagination import PageParams, PaginatedResponse
 from app.services.excel_exporter import export_test_cases_to_excel
 
 from .crud import (
@@ -25,6 +27,7 @@ async def generate_test_cases(
     data: dict,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.create")),
 ):
     """AI 生成测试用例（异步），传入 {test_point_ids, knowledge_base_ids?}"""
     from app.modules.task_batches.crud import create_batch
@@ -54,23 +57,25 @@ async def generate_test_cases(
     return {"batch_id": batch.id, "message": "测试用例生成任务已提交"}
 
 
-@router.get("/test-cases/project/{project_id}", response_model=list[TestCaseResponse])
+@router.get("/test-cases/project/{project_id}", response_model=PaginatedResponse[TestCaseResponse])
 async def list_test_cases(
     project_id: int,
+    page_params: PageParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.view")),
 ):
     """获取项目下的测试用例列表"""
     project = await get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
-    cases = await get_test_cases(db, project_id)
-    return [TestCaseResponse.model_validate(c) for c in cases]
+    return await get_test_cases(db, project_id, page_params)
 
 
 @router.get("/test-cases/{case_id}", response_model=TestCaseResponse)
 async def retrieve_test_case(
     case_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.view")),
 ):
     """获取测试用例详情"""
     tc = await get_test_case(db, case_id)
@@ -84,6 +89,7 @@ async def create_new_test_case(
     project_id: int = Query(..., description="所属项目 ID"),
     data: TestCaseCreate = ...,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.create")),
 ):
     """手动创建测试用例"""
     project = await get_project(db, project_id)
@@ -93,9 +99,16 @@ async def create_new_test_case(
     if not tp:
         raise HTTPException(status_code=404, detail="测试点不存在")
 
-    # 计算该测试点下的用例序号
-    existing_cases = await get_test_cases(db, project_id)
-    seq = sum(1 for c in existing_cases if c.test_point_id == data.test_point_id) + 1
+    # 直接查询该测试点下的已有用例数量，生成序号
+    from sqlalchemy import func, select
+    from .models import TestCase as TestCaseModel
+    count_result = await db.execute(
+        select(func.count()).where(
+            TestCaseModel.test_point_id == data.test_point_id,
+            TestCaseModel.project_id == project_id
+        )
+    )
+    seq = (count_result.scalar() or 0) + 1
 
     tc = await create_test_case(
         db, project_id=project_id,
@@ -116,6 +129,7 @@ async def update_existing_test_case(
     case_id: int,
     data: TestCaseUpdate,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.edit")),
 ):
     """更新测试用例"""
     tc = await get_test_case(db, case_id)
@@ -131,6 +145,7 @@ async def update_existing_test_case(
 async def delete_existing_test_case(
     case_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.delete")),
 ):
     """删除测试用例"""
     tc = await get_test_case(db, case_id)
@@ -143,14 +158,23 @@ async def delete_existing_test_case(
 async def export_test_cases_excel(
     project_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("testcase.view")),
 ):
     """导出项目测试用例为 Excel 文件"""
     project = await get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
 
-    cases = await get_test_cases(db, project_id)
-    excel_data = export_test_cases_to_excel(cases)
+    # 导出需要所有用例，直接查询而非走分页接口
+    from sqlalchemy import select
+    from .models import TestCase as TestCaseModel
+    result = await db.execute(
+        select(TestCaseModel)
+        .where(TestCaseModel.project_id == project_id)
+        .order_by(TestCaseModel.created_at.desc())
+    )
+    all_cases = list(result.scalars().all())
+    excel_data = export_test_cases_to_excel(all_cases)
 
     return StreamingResponse(
         BytesIO(excel_data),

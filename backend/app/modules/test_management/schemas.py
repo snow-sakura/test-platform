@@ -36,7 +36,7 @@ class TestCaseAttachmentResponse(BaseModel):
     filename: str
     file_path: str
     file_size: int
-    uploaded_by: int
+    uploaded_by: int | None = None
     uploaded_at: str | None = None
 
     @field_validator("uploaded_at", mode="before")
@@ -55,7 +55,7 @@ class TestCaseCommentResponse(BaseModel):
 
     id: int
     case_id: int
-    author_id: int
+    author_id: int | None = None
     content: str
     created_at: str | None = None
 
@@ -100,7 +100,7 @@ class TestCaseListResponse(BaseModel):
     priority: str
     status: str
     case_type: str | None = None
-    author_id: int
+    author_id: int | None = None
     step_count: int = 0
     comment_count: int = 0
     created_at: str | None = None
@@ -125,7 +125,7 @@ class TestCaseDetailResponse(BaseModel):
     priority: str
     status: str
     case_type: str | None = None
-    author_id: int
+    author_id: int | None = None
     steps: list[TestCaseStepResponse] = []
     comments: list[TestCaseCommentResponse] = []
     attachments: list[TestCaseAttachmentResponse] = []
@@ -168,7 +168,7 @@ class TestSuiteResponse(BaseModel):
     project_id: int
     name: str
     description: str | None = None
-    author_id: int
+    author_id: int | None = None
     case_count: int = 0
     created_at: str | None = None
     updated_at: str | None = None
@@ -259,7 +259,7 @@ class ReviewAssignmentResponse(BaseModel):
 
     id: int
     review_id: int
-    reviewer_id: int
+    reviewer_id: int | None = None
     status: str
     comment: str | None = None
     checklist_results: dict | None = None
@@ -278,7 +278,7 @@ class ReviewCommentResponse(BaseModel):
     id: int
     review_id: int
     case_id: int
-    author_id: int
+    author_id: int | None = None
     content: str
     is_resolved: bool = False
     created_at: str | None = None
@@ -296,7 +296,7 @@ class ReviewResponse(BaseModel):
     id: int
     title: str
     description: str | None = None
-    creator_id: int
+    creator_id: int | None = None
     status: str
     priority: str
     deadline: str | None = None
@@ -372,7 +372,7 @@ class PlanResponse(BaseModel):
     description: str | None = None
     project_id: int
     version_id: int | None = None
-    creator_id: int
+    creator_id: int | None = None
     is_active: bool = True
     run_count: int = 0
     created_at: str | None = None
@@ -461,7 +461,7 @@ class ReportResponse(BaseModel):
     run_id: int | None = None
     summary: str | None = None
     content: dict | None = None
-    created_by: int
+    created_by: int | None = None
     created_at: str | None = None
 
     @field_validator("created_at", mode="before")
@@ -485,6 +485,18 @@ class ReportTemplateResponse(BaseModel):
         if isinstance(value, datetime):
             return value.strftime("%Y-%m-%d %H:%M:%S")
         return value
+
+
+class ReportTemplateUpdate(BaseModel):
+    """更新报告模板"""
+    name: str | None = None
+    template_config: dict | None = None
+    is_default: bool | None = None
+
+
+class ReviewAssignersCreate(BaseModel):
+    """为评审分配评审人"""
+    reviewer_ids: list[int]
 
 
 # ==============================

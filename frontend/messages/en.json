@@ -8,6 +8,7 @@
     "uiAutomation": "UI Automation",
     "dataFactory": "Data Factory",
     "appAutomation": "APP Automation",
+    "performance": "Performance Test",
     "aiIntelligent": "AI Intelligent Mode",
     "aiReviewer": "AI Reviewer",
     "configuration": "Configuration"
@@ -57,11 +58,14 @@
     "welcome": "Welcome to TestPlate",
     "subtitle": "AI-Powered Full-Stack Test Management Platform",
     "cards": {
+      "projects": {"title": "Projects", "desc": "Create and manage test projects & teams"},
+      "testManagement": {"title": "Test Management", "desc": "Test cases/suites/reviews/executions/reports"},
       "aiGeneration": {"title": "AI Test Generation", "desc": "Requirement analysis & AI test case generation"},
       "apiTesting": {"title": "API Testing", "desc": "HTTP/WebSocket API automation testing"},
       "uiAutomation": {"title": "UI Automation", "desc": "Selenium/Playwright UI automation"},
       "dataFactory": {"title": "Data Factory", "desc": "80+ test data generation tools"},
       "appAutomation": {"title": "APP Automation", "desc": "Android APP automation testing"},
+      "performance": {"title": "Performance Test", "desc": "Concurrent load testing & metrics analysis"},
       "aiIntelligent": {"title": "AI Intelligent Mode", "desc": "Browser-Use AI driven testing"},
       "aiReviewer": {"title": "AI Reviewer", "desc": "Dify AI conversation assistant"},
       "configuration": {"title": "Configuration", "desc": "AI models/prompts/environment config"}

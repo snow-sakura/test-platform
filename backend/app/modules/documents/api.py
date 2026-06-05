@@ -10,6 +10,8 @@ from app.core.upload import upload_file
 from app.database import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.projects.crud import get_project
+from app.modules.rbac.service import require_permission
+from app.pagination import PageParams, PaginatedResponse
 from app.services.document_parser import parse_document
 
 from .crud import create_document, delete_document, get_document, get_documents
@@ -30,6 +32,7 @@ async def upload_project_document(
     project_id: int,
     file: UploadFile,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("document.upload")),
 ):
     """上传项目文档（支持 PDF/DOCX/MD/YAML/CSV），自动解析内容"""
     # 验证项目存在
@@ -87,16 +90,18 @@ async def upload_project_document(
     return DocumentResponse.model_validate(doc)
 
 
-@router.get("/projects/{project_id}/documents", response_model=list[DocumentResponse])
+@router.get("/projects/{project_id}/documents", response_model=PaginatedResponse[DocumentResponse])
 async def list_project_documents(
     project_id: int,
+    page_params: PageParams = Depends(),
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("document.view")),
 ):
     """获取项目下的文档列表"""
     project = await get_project(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
-    return await get_documents(db, project_id)
+    return await get_documents(db, project_id, page_params)
 
 
 @router.get("/projects/{project_id}/documents/{doc_id}", response_model=DocumentDetailResponse)
@@ -104,6 +109,7 @@ async def retrieve_document(
     project_id: int,
     doc_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("document.view")),
 ):
     """获取文档详情（含解析后的文本内容）"""
     project = await get_project(db, project_id)
@@ -123,6 +129,7 @@ async def delete_project_document(
     project_id: int,
     doc_id: int,
     db: AsyncSession = Depends(get_db),
+    _=Depends(require_permission("document.delete")),
 ):
     """删除文档（同时删除物理文件）"""
     project = await get_project(db, project_id)

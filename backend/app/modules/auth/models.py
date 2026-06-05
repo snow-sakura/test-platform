@@ -12,8 +12,11 @@ class User(Base):
     """用户模型"""
 
     __tablename__ = "users"
+    __table_args__ = {"comment": "用户"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="用户 ID"
+    )
     username: Mapped[str] = mapped_column(
         String(150), unique=True, nullable=False, comment="用户名"
     )
@@ -66,8 +69,11 @@ class RefreshTokenBlacklist(Base):
     """刷新令牌黑名单（登出/更换令牌时加入）"""
 
     __tablename__ = "refresh_token_blacklist"
+    __table_args__ = {"comment": "刷新令牌黑名单"}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="ID"
+    )
     token: Mapped[str] = mapped_column(
         String(500), unique=True, nullable=False, comment="令牌"
     )
