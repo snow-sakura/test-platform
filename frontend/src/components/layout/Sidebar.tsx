@@ -15,6 +15,7 @@ import {
   RobotOutlined,
   MessageOutlined,
   SettingOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 
 export default function Sidebar() {
@@ -30,6 +31,7 @@ export default function Sidebar() {
     { type: 'divider' } as any,
     { key: 'ai_generation', icon: <ThunderboltOutlined />, label: t('nav.aiGeneration') },
     { key: '/api-testing', icon: <ApiOutlined />, label: t('nav.apiTesting') },
+    { key: '/test-management', icon: <FileTextOutlined />, label: t('nav.testManagement') },
     { key: 'ui_auto', icon: <MonitorOutlined />, label: t('nav.uiAutomation'), disabled: true },
     { key: 'data_factory', icon: <DatabaseOutlined />, label: t('nav.dataFactory'), disabled: true },
     { key: 'app_auto', icon: <MobileOutlined />, label: t('nav.appAutomation'), disabled: true },

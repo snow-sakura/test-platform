@@ -33,6 +33,16 @@ from app.modules.api_testing.models import (
     ApiEnvironment, ApiRequestHistory, ApiScheduledTask,
     ApiNotificationConfig, ApiNotificationLog,
 )  # noqa: F401
+from app.modules.test_management.models import (  # noqa: F401
+    TestManagementCase, TestManagementCaseStep, TestManagementCaseAttachment,
+    TestManagementCaseComment, TestManagementSuite, TestManagementSuiteCase,
+    TestManagementVersion, TestManagementVersionProject,
+    TestManagementReview, TestManagementReviewProject, TestManagementReviewCase,
+    TestManagementReviewAssignment, TestManagementReviewComment,
+    TestManagementReviewTemplate, TestManagementPlan, TestManagementRun,
+    TestManagementRunCase, TestManagementRunCaseHistory,
+    TestManagementReport, TestManagementReportTemplate,
+)
 
 target_metadata = Base.metadata
 

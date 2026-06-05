@@ -17,6 +17,7 @@ from app.modules.task_batches.api import router as batches_router
 from app.modules.knowledge_bases.api import router as knowledge_bases_router
 from app.modules.settings.api import router as settings_router
 from app.modules.api_testing.api import router as api_testing_router
+from app.modules.test_management.api import router as test_management_router
 
 
 @asynccontextmanager
@@ -65,3 +66,4 @@ app.include_router(batches_router, prefix=settings.API_PREFIX)
 app.include_router(knowledge_bases_router, prefix=settings.API_PREFIX)
 app.include_router(settings_router, prefix=settings.API_PREFIX)
 app.include_router(api_testing_router, prefix=settings.API_PREFIX)
+app.include_router(test_management_router, prefix=settings.API_PREFIX)

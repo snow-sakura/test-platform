@@ -4,6 +4,7 @@
     "projects": "项目管理",
     "aiGeneration": "AI用例生成",
     "apiTesting": "接口测试",
+    "testManagement": "测试管理",
     "uiAutomation": "UI自动化测试",
     "dataFactory": "数据工厂",
     "appAutomation": "APP自动化测试",
