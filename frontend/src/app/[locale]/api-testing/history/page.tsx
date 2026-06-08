@@ -5,6 +5,7 @@ import {
   Button, Input, Select, Table, Tag, Space, message, Modal, Popconfirm,
 } from 'antd';
 import { DeleteOutlined, ClearOutlined, EyeOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import type { ColumnsType } from 'antd/es/table';
 import {
   getRequestHistory, deleteRequestHistory, clearRequestHistory,
@@ -12,8 +13,10 @@ import {
 } from '@/lib/api/api-testing';
 import type { ApiRequestHistory } from '@/lib/api/api-testing';
 
-/** 请求历史页面 */
+/** Request history page */
 export default function HistoryPage() {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [histories, setHistories] = useState<ApiRequestHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -41,21 +44,21 @@ export default function HistoryPage() {
     if (selectedRowKeys.length === 0) return;
     try {
       await deleteRequestHistory(selectedRowKeys as number[]);
-      message.success('删除成功');
+      message.success(t('history.deleteSuccess'));
       setSelectedRowKeys([]);
       fetchData();
     } catch {
-      message.error('删除失败');
+      message.error(t('history.deleteFailed'));
     }
   };
 
   const handleClearAll = async () => {
     try {
       await clearRequestHistory(0);
-      message.success('已清空');
+      message.success(t('history.cleared'));
       fetchData();
     } catch {
-      message.error('清空失败');
+      message.error(t('history.clearFailed'));
     }
   };
 
@@ -65,13 +68,13 @@ export default function HistoryPage() {
       setDetailRecord(res.data);
       setDetailOpen(true);
     } catch {
-      message.error('获取详情失败');
+      message.error(t('history.loadDetailFailed'));
     }
   };
 
   const columns: ColumnsType<ApiRequestHistory> = [
     {
-      title: '方法', dataIndex: 'method', key: 'method', width: 90,
+      title: t('history.method'), dataIndex: 'method', key: 'method', width: 90,
       render: (m: string) => (
         <Tag color={m === 'GET' ? 'green' : m === 'POST' ? 'blue' : m === 'PUT' ? 'orange' : m === 'DELETE' ? 'red' : 'default'}>
           {m}
@@ -80,21 +83,21 @@ export default function HistoryPage() {
     },
     { title: 'URL', dataIndex: 'url', key: 'url', ellipsis: true },
     {
-      title: '状态码', dataIndex: 'response_status', key: 'response_status', width: 100,
+      title: t('history.statusCode'), dataIndex: 'response_status', key: 'response_status', width: 100,
       render: (v: number | null) => v ? (
         <Tag color={v >= 200 && v < 300 ? 'success' : v >= 400 ? 'error' : 'warning'}>{v}</Tag>
       ) : '-',
     },
     {
-      title: '耗时', dataIndex: 'elapsed_time', key: 'elapsed_time', width: 100,
+      title: t('history.duration'), dataIndex: 'elapsed_time', key: 'elapsed_time', width: 100,
       render: (v: number | null) => v ? `${v.toFixed(0)}ms` : '-',
     },
-    { title: '执行时间', dataIndex: 'executed_at', key: 'executed_at', width: 180 },
+    { title: t('history.executeTime'), dataIndex: 'executed_at', key: 'executed_at', width: 180 },
     {
-      title: '操作', key: 'actions', width: 80,
+      title: tc('action'), key: 'actions', width: 80,
       render: (_, record) => (
         <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record.id)}>
-          详情
+          {tc('detail')}
         </Button>
       ),
     },
@@ -107,14 +110,14 @@ export default function HistoryPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onSearch={() => { setPage(1); fetchData(); }}
-          placeholder="搜索 URL"
+          placeholder={t('history.searchUrl')}
           style={{ width: 250 }}
           allowClear
         />
         <Select
           value={methodFilter}
           onChange={setMethodFilter}
-          placeholder="方法筛选"
+          placeholder={t('history.methodFilter')}
           allowClear
           style={{ width: 120 }}
           options={['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) => ({ value: m, label: m }))}
@@ -122,24 +125,24 @@ export default function HistoryPage() {
         <Select
           value={statusFilter}
           onChange={setStatusFilter}
-          placeholder="状态码"
+          placeholder={t('history.statusCode')}
           allowClear
           style={{ width: 120 }}
           options={[
-            { value: 200, label: '2xx 成功' },
-            { value: 300, label: '3xx 重定向' },
-            { value: 400, label: '4xx 客户端错误' },
-            { value: 500, label: '5xx 服务端错误' },
+            { value: 200, label: t('history.success2xx') },
+            { value: 300, label: t('history.redirect3xx') },
+            { value: 400, label: t('history.clientError4xx') },
+            { value: 500, label: t('history.serverError5xx') },
           ]}
         />
         <Space>
           {selectedRowKeys.length > 0 && (
-            <Popconfirm title={`确定删除选中的 ${selectedRowKeys.length} 条记录？`} onConfirm={handleBatchDelete}>
-              <Button icon={<DeleteOutlined />} danger>批量删除</Button>
+            <Popconfirm title={`${t('history.deleteSelected')} ${tc('totalCount', { count: selectedRowKeys.length })}`} onConfirm={handleBatchDelete}>
+              <Button icon={<DeleteOutlined />} danger>{t('history.batchDelete')}</Button>
             </Popconfirm>
           )}
-          <Popconfirm title="确定清空所有历史记录？" onConfirm={handleClearAll}>
-            <Button icon={<ClearOutlined />}>清空</Button>
+          <Popconfirm title={t('history.clearAll')} onConfirm={handleClearAll}>
+            <Button icon={<ClearOutlined />}>{t('history.clear')}</Button>
           </Popconfirm>
         </Space>
       </div>
@@ -158,12 +161,12 @@ export default function HistoryPage() {
           total,
           pageSize: 20,
           onChange: setPage,
-          showTotal: (t) => `共 ${t} 条`,
+          showTotal: (t: number) => tc('totalCount', { count: t }),
         }}
       />
 
       <Modal
-        title={`请求详情 #${detailRecord?.id}`}
+        title={`${t('history.detail')} #${detailRecord?.id}`}
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={null}
@@ -171,21 +174,21 @@ export default function HistoryPage() {
       >
         {detailRecord && (
           <div>
-            <p><strong>方法：</strong><Tag>{detailRecord.method}</Tag></p>
-            <p><strong>URL：</strong>{detailRecord.url}</p>
-            <p><strong>状态码：</strong>{detailRecord.response_status}</p>
-            <p><strong>耗时：</strong>{detailRecord.elapsed_time?.toFixed(0)}ms</p>
-            <p><strong>执行时间：</strong>{detailRecord.executed_at}</p>
+            <p><strong>{t('history.method')}: </strong><Tag>{detailRecord.method}</Tag></p>
+            <p><strong>URL: </strong>{detailRecord.url}</p>
+            <p><strong>{t('history.statusCode')}: </strong>{detailRecord.response_status}</p>
+            <p><strong>{t('history.duration')}: </strong>{detailRecord.elapsed_time?.toFixed(0)}ms</p>
+            <p><strong>{t('history.executeTime')}: </strong>{detailRecord.executed_at}</p>
             <details>
-              <summary style={{ cursor: 'pointer', marginBottom: 8 }}>请求头</summary>
+              <summary style={{ cursor: 'pointer', marginBottom: 8 }}>{t('history.requestHeaders')}</summary>
               <pre style={{ background: '#f6f8fa', padding: 8, borderRadius: 4, fontSize: 12 }}>
                 {JSON.stringify(detailRecord.headers, null, 2)}
               </pre>
             </details>
             <details>
-              <summary style={{ cursor: 'pointer', marginBottom: 8 }}>响应体</summary>
+              <summary style={{ cursor: 'pointer', marginBottom: 8 }}>{t('history.responseBody')}</summary>
               <pre style={{ background: '#f6f8fa', padding: 8, borderRadius: 4, fontSize: 12, maxHeight: 300, overflow: 'auto' }}>
-                {detailRecord.response_body || '(空)'}
+                {detailRecord.response_body || `(${t('history.empty')})`}
               </pre>
             </details>
           </div>

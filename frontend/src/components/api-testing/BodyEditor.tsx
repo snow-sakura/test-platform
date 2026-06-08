@@ -2,6 +2,7 @@
 
 import { Button, Input, Select } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 
 interface BodyEditorProps {
   bodyType: string;
@@ -11,10 +12,12 @@ interface BodyEditorProps {
   disabled?: boolean;
 }
 
-/** 请求体编辑器：支持 JSON/FormData/FormUrlencoded/none */
+/** Request body editor: supports JSON/FormData/FormUrlencoded/none */
 export default function BodyEditor({
   bodyType, body, onBodyTypeChange, onBodyChange, disabled = false,
 }: BodyEditorProps) {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const renderJsonEditor = () => (
     <Input.TextArea
       value={typeof body === 'string' ? body : (body ? JSON.stringify(body, null, 2) : '')}
@@ -67,7 +70,7 @@ export default function BodyEditor({
             <Input
               value={key}
               onChange={(e) => updateEntry(idx, 'key', e.target.value)}
-              placeholder="字段名"
+              placeholder={t('interface.paramName')}
               disabled={disabled}
               style={{ width: 200 }}
               size="small"
@@ -75,7 +78,7 @@ export default function BodyEditor({
             <Input
               value={String(value || '')}
               onChange={(e) => updateEntry(idx, 'value', e.target.value)}
-              placeholder="值"
+              placeholder={t('interface.paramValue')}
               disabled={disabled}
               style={{ flex: 1 }}
               size="small"
@@ -87,7 +90,7 @@ export default function BodyEditor({
         ))}
         {!disabled && (
           <Button type="dashed" icon={<PlusOutlined />} onClick={addEntry} size="small" style={{ marginTop: 4 }}>
-            添加字段
+            {t('interface.addField')}
           </Button>
         )}
       </div>
@@ -95,7 +98,7 @@ export default function BodyEditor({
   };
 
   const editors: Record<string, () => React.ReactNode> = {
-    none: () => <div style={{ color: '#999', padding: 20 }}>无请求体</div>,
+    none: () => <div style={{ color: '#999', padding: 20 }}>{t('interface.noBody')}</div>,
     json: renderJsonEditor,
     'form-data': renderFormDataEditor,
     'x-www-form-urlencoded': renderFormDataEditor,
@@ -110,7 +113,7 @@ export default function BodyEditor({
         disabled={disabled}
         style={{ width: 200, marginBottom: 8 }}
         options={[
-          { value: 'none', label: '无' },
+          { value: 'none', label: 'None' },
           { value: 'json', label: 'JSON' },
           { value: 'form-data', label: 'FormData' },
           { value: 'x-www-form-urlencoded', label: 'x-www-form-urlencoded' },

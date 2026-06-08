@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { Form, Input, Modal, Select } from 'antd';
+import { useTranslations } from 'next-intl';
 import { createApiProject, updateApiProject } from '@/lib/api/api-testing';
 import type { ApiProject } from '@/lib/api/api-testing';
 
@@ -12,8 +13,10 @@ interface Props {
   onSuccess: () => void;
 }
 
-/** API 项目创建/编辑弹窗 */
+/** API project create/edit modal */
 export default function ApiProjectFormModal({ open, editRecord, onClose, onSuccess }: Props) {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -43,30 +46,30 @@ export default function ApiProjectFormModal({ open, editRecord, onClose, onSucce
 
   return (
     <Modal
-      title={editRecord ? '编辑 API 项目' : '新建 API 项目'}
+      title={editRecord ? t('project.edit') : t('project.create')}
       open={open}
       onOk={handleOk}
       onCancel={onClose}
       destroyOnClose
     >
       <Form form={form} layout="vertical">
-        <Form.Item name="name" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
-          <Input placeholder="例如：电商平台API" />
+        <Form.Item name="name" label={t('project.name')} rules={[{ required: true, message: tc('inputPlaceholder') }]}>
+          <Input placeholder={tc('inputPlaceholder')} />
         </Form.Item>
-        <Form.Item name="description" label="描述">
-          <Input.TextArea rows={3} placeholder="可选描述" />
+        <Form.Item name="description" label={tc('description')}>
+          <Input.TextArea rows={3} placeholder={tc('inputPlaceholder')} />
         </Form.Item>
-        <Form.Item name="type" label="类型" initialValue="HTTP">
+        <Form.Item name="type" label={tc('type')} initialValue="HTTP">
           <Select>
             <Select.Option value="HTTP">HTTP</Select.Option>
             <Select.Option value="WebSocket">WebSocket</Select.Option>
             <Select.Option value="gRPC">gRPC</Select.Option>
           </Select>
         </Form.Item>
-        <Form.Item name="status" label="状态" initialValue="active">
+        <Form.Item name="status" label={tc('status')} initialValue="active">
           <Select>
-            <Select.Option value="active">启用</Select.Option>
-            <Select.Option value="archived">归档</Select.Option>
+            <Select.Option value="active">{t('project.active')}</Select.Option>
+            <Select.Option value="archived">{t('project.archived')}</Select.Option>
           </Select>
         </Form.Item>
       </Form>

@@ -51,19 +51,23 @@ export default function ProjectDetailPage() {
     try {
       const res = await getProjectMembers(id);
       setMembers(res.data || []);
-    } catch { message.error('加载成员失败'); }
+    } catch { message.error(t('project.loadMembersFailed')); }
     finally { setMembersLoading(false); }
   };
 
   const handleRemoveMember = async (userId: number) => {
     try {
       await removeProjectMember(id, userId);
-      message.success('已移除成员');
+      message.success(t('project.memberRemoved'));
       loadMembers();
-    } catch { message.error('移除失败'); }
+    } catch { message.error(t('project.removeFailed')); }
   };
 
-  const roleLabels: Record<string, string> = { admin: '管理员', member: '成员', viewer: '观察者' };
+  const roleLabels: Record<string, string> = {
+    admin: t('project.admin'),
+    member: t('project.member'),
+    viewer: t('project.observer'),
+  };
 
   useEffect(() => {
     getProject(id)
@@ -99,8 +103,8 @@ export default function ProjectDetailPage() {
             <Descriptions.Item label={t('project.description')}>{project.description || '-'}</Descriptions.Item>
             <Descriptions.Item label={t('project.startDate')}>{project.start_date || '-'}</Descriptions.Item>
             <Descriptions.Item label={t('project.endDate')}>{project.end_date || '-'}</Descriptions.Item>
-            <Descriptions.Item label="创建者">{project.creator_name || '-'}</Descriptions.Item>
-            <Descriptions.Item label="成员数">{project.member_count}</Descriptions.Item>
+            <Descriptions.Item label={t('project.creator')}>{project.creator_name || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('project.members')}>{project.member_count}</Descriptions.Item>
             <Descriptions.Item label={t('project.createdAt')}>{project.created_at}</Descriptions.Item>
             <Descriptions.Item label={t('project.updatedAt')}>{project.updated_at}</Descriptions.Item>
           </Descriptions>
@@ -114,37 +118,37 @@ export default function ProjectDetailPage() {
     },
     {
       key: 'test_points',
-      label: '测试点',
+      label: t('project.testPoints'),
       children: <TestPoints projectId={id} documentIds={documentIds} onSelectionChange={handleSelectionChange} />,
     },
     {
       key: 'test_cases',
-      label: '测试用例',
+      label: t('project.testCases'),
       children: <TestCases projectId={id} selectedTestPointIds={selectedTestPointIds} />,
     },
     {
       key: 'knowledge_base',
-      label: '知识库',
+      label: t('project.knowledgeBase'),
       children: <KBTab />,
     },
     {
       key: 'members',
-      label: <span><TeamOutlined /> 成员</span>,
+      label: <span><TeamOutlined /> {t('project.member')}</span>,
       children: (
         <Table rowKey="id" loading={membersLoading} dataSource={members} size="small" pagination={false}
           columns={[
-            { title: '用户名', dataIndex: 'username', width: 160 },
+            { title: t('auth.username'), dataIndex: 'username', width: 160 },
             {
-              title: '角色', dataIndex: 'role_display', width: 100,
+              title: t('project.memberRole'), dataIndex: 'role_display', width: 100,
               render: (v: string, r: ProjectMember) => <Tag color={r.role === 'admin' ? 'gold' : r.role === 'member' ? 'blue' : 'default'}>{v}</Tag>,
             },
-            { title: '加入时间', dataIndex: 'created_at', width: 170 },
+            { title: t('project.joinTime'), dataIndex: 'created_at', width: 170 },
             {
-              title: '操作', width: 100,
+              title: t('common.action'), width: 100,
               render: (_: unknown, r: ProjectMember) => (
                 r.role !== 'admin' ? (
-                  <Popconfirm title="确认移除？" onConfirm={() => handleRemoveMember(r.user_id)}>
-                    <Button size="small" danger>移除</Button>
+                  <Popconfirm title={t('project.confirmRemove')} onConfirm={() => handleRemoveMember(r.user_id)}>
+                    <Button size="small" danger>{t('project.remove')}</Button>
                   </Popconfirm>
                 ) : null
               ),
@@ -155,7 +159,7 @@ export default function ProjectDetailPage() {
     },
     {
       key: 'batches',
-      label: <Badge status="processing" text="任务追踪" />,
+      label: <Badge status="processing" text={t('project.taskTracking')} />,
       children: <BatchTracker projectId={id} />,
     },
   ];

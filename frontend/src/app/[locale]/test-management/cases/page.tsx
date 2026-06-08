@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Button, Table, Tag, Space, message, Modal, Select, Input, Row, Col, Popconfirm, Upload,
 } from 'antd';
@@ -12,21 +13,22 @@ import { getApiProjects } from '@/lib/api/api-testing';
 import type { TestCaseListItem } from '@/lib/api/test-management';
 import type { ApiProject } from '@/lib/api/api-testing';
 
-const PRIORITY_MAP: Record<string, { color: string; label: string }> = {
-  HIGH: { color: 'red', label: '高' },
-  MEDIUM: { color: 'orange', label: '中' },
-  LOW: { color: 'blue', label: '低' },
-};
-
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  draft: { color: 'default', label: '草稿' },
-  pending_review: { color: 'processing', label: '待评审' },
-  approved: { color: 'success', label: '已通过' },
-  rejected: { color: 'error', label: '已驳回' },
-};
-
 export default function CaseListPage() {
+  const t = useTranslations();
   const router = useRouter();
+
+  const PRIORITY_MAP = useMemo(() => ({
+    HIGH: { color: 'red', label: t('testManagement.case.high') },
+    MEDIUM: { color: 'orange', label: t('testManagement.case.medium') },
+    LOW: { color: 'blue', label: t('testManagement.case.low') },
+  }), [t]);
+
+  const STATUS_MAP = useMemo(() => ({
+    draft: { color: 'default', label: t('testManagement.case.draft') },
+    pending_review: { color: 'processing', label: t('testManagement.case.pendingReview') },
+    approved: { color: 'success', label: t('testManagement.case.approved') },
+    rejected: { color: 'error', label: t('testManagement.case.rejected') },
+  }), [t]);
   const locale = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'zh-cn';
 
   const [projects, setProjects] = useState<ApiProject[]>([]);
@@ -40,14 +42,14 @@ export default function CaseListPage() {
   const [priorityFilter, setPriorityFilter] = useState<string | undefined>();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // 加载项目列表
+  // Load project list
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results || []);
-    }).catch((e) => console.warn('加载项目列表失败', e));
+    }).catch((e) => console.warn('Failed to load project list', e));
   }, []);
 
-  // 加载用例列表
+  // Load case list
   const loadCases = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
@@ -61,7 +63,7 @@ export default function CaseListPage() {
       setCases(res.data.results || []);
       setTotal(res.data.count || 0);
     } catch {
-      message.error('加载失败');
+      message.error(t('testManagement.case.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -71,18 +73,18 @@ export default function CaseListPage() {
     loadCases();
   }, [loadCases]);
 
-  // 删除单个用例
+  // Delete single case
   const handleDelete = async (id: number) => {
     try {
       await deleteCase(id);
-      message.success('已删除');
+      message.success(t('testManagement.case.deleted'));
       loadCases();
     } catch {
-      message.error('删除失败');
+      message.error(t('testManagement.case.deleteFailed'));
     }
   };
 
-  // 导出 Excel
+  // Export Excel
   const handleExport = async () => {
     if (!projectId) return;
     try {
@@ -91,7 +93,7 @@ export default function CaseListPage() {
         status: statusFilter,
         priority: priorityFilter,
       });
-      // 触发浏览器下载
+      // Trigger browser download
       const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -101,44 +103,44 @@ export default function CaseListPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      message.success('导出成功');
+      message.success(t('testManagement.case.exportSuccess'));
     } catch {
-      message.error('导出失败');
+      message.error(t('testManagement.case.exportFailed'));
     }
   };
 
-  // 导入 Excel
+  // Import Excel
   const handleImport = async (file: File) => {
     if (!projectId) return;
     try {
       const res = await importCasesExcel(projectId, file);
       const data = res.data;
       if (data.errors && data.errors.length > 0) {
-        message.warning(`导入完成：成功 ${data.created} 条，失败 ${data.errors.length} 条`);
-        console.error('导入错误:', data.errors);
+        message.warning(t('testManagement.case.importCompleted', { count: data.created }));
+        console.error('Import errors:', data.errors);
       } else {
-        message.success(`导入完成：成功 ${data.created} 条`);
+        message.success(t('testManagement.case.importCompleted', { count: data.created }));
       }
       loadCases();
     } catch {
-      message.error('导入失败，请检查文件格式');
+      message.error(t('testManagement.case.importFailed'));
     }
-    return false; // 阻止 Upload 默认上传行为
+    return false; // Prevent Upload default behavior
   };
 
-  // 批量删除
+  // Batch delete
   const handleBatchDelete = async () => {
     if (!selectedRowKeys.length) return;
     Modal.confirm({
-      title: `确定删除选中的 ${selectedRowKeys.length} 个用例？`,
+      title: `${t('common.confirmDeleteItem')}: ${selectedRowKeys.length} ${t('common.items')}`,
       onOk: async () => {
         try {
           await batchDeleteCases(selectedRowKeys as number[]);
-          message.success('批量删除成功');
+          message.success(t('common.deleteSuccess'));
           setSelectedRowKeys([]);
           loadCases();
         } catch {
-          message.error('批量删除失败');
+          message.error(t('common.operationFailed'));
         }
       },
     });
@@ -146,39 +148,39 @@ export default function CaseListPage() {
 
   const columns: ColumnsType<TestCaseListItem> = [
     {
-      title: '标题', dataIndex: 'title', key: 'title', ellipsis: true,
+      title: t('testManagement.case.titleLabel'), dataIndex: 'title', key: 'title', ellipsis: true,
       render: (text: string, record) => (
         <a onClick={() => router.push(`/${locale}/test-management/cases/${record.id}`)}>{text}</a>
       ),
     },
     {
-      title: '优先级', dataIndex: 'priority', key: 'priority', width: 80,
+      title: t('testManagement.case.priority'), dataIndex: 'priority', key: 'priority', width: 80,
       render: (v: string) => {
-        const p = PRIORITY_MAP[v] || { color: 'default', label: v };
+        const p = PRIORITY_MAP[v as keyof typeof PRIORITY_MAP] || { color: 'default', label: v };
         return <Tag color={p.color}>{p.label}</Tag>;
       },
     },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 90,
+      title: t('testManagement.case.status'), dataIndex: 'status', key: 'status', width: 90,
       render: (v: string) => {
-        const s = STATUS_MAP[v] || { color: 'default', label: v };
+        const s = STATUS_MAP[v as keyof typeof STATUS_MAP] || { color: 'default', label: v };
         return <Tag color={s.color}>{s.label}</Tag>;
       },
     },
-    { title: '类型', dataIndex: 'case_type', key: 'case_type', width: 80 },
-    { title: '步骤', dataIndex: 'step_count', key: 'step_count', width: 60 },
-    { title: '评论', dataIndex: 'comment_count', key: 'comment_count', width: 60 },
+    { title: t('testManagement.case.type'), dataIndex: 'case_type', key: 'case_type', width: 80 },
+    { title: t('testManagement.case.steps'), dataIndex: 'step_count', key: 'step_count', width: 60 },
+    { title: t('testManagement.case.comments'), dataIndex: 'comment_count', key: 'comment_count', width: 60 },
     {
-      title: '操作', key: 'action', width: 140,
+      title: t('common.action'), key: 'action', width: 140,
       render: (_, record) => (
         <Space>
           <Button type="link" size="small" icon={<EyeOutlined />}
             onClick={() => router.push(`/${locale}/test-management/cases/${record.id}`)}
           >
-            查看
+            {t('common.detail')}
           </Button>
-          <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
-            <Button type="link" danger size="small" icon={<DeleteOutlined />}>删除</Button>
+          <Popconfirm title={t('testManagement.case.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
+            <Button type="link" danger size="small" icon={<DeleteOutlined />}>{t('common.delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -190,7 +192,7 @@ export default function CaseListPage() {
       <Row gutter={16} style={{ marginBottom: 16 }} align="middle">
         <Col span={6}>
           <Select
-            placeholder="请选择项目"
+            placeholder={t('common.selectProject')}
             style={{ width: '100%' }}
             value={projectId}
             onChange={(v) => { setProjectId(v); setPage(1); }}
@@ -201,36 +203,36 @@ export default function CaseListPage() {
         </Col>
         <Col span={4}>
           <Select
-            placeholder="状态筛选"
+            placeholder={t('testManagement.case.status')}
             allowClear
             style={{ width: '100%' }}
             value={statusFilter}
             onChange={(v) => { setStatusFilter(v); setPage(1); }}
             options={[
-              { label: '草稿', value: 'draft' },
-              { label: '待评审', value: 'pending_review' },
-              { label: '已通过', value: 'approved' },
-              { label: '已驳回', value: 'rejected' },
+              { label: t('testManagement.case.draft'), value: 'draft' },
+              { label: t('testManagement.case.pendingReview'), value: 'pending_review' },
+              { label: t('testManagement.case.approved'), value: 'approved' },
+              { label: t('testManagement.case.rejected'), value: 'rejected' },
             ]}
           />
         </Col>
         <Col span={3}>
           <Select
-            placeholder="优先级"
+            placeholder={t('testManagement.case.priority')}
             allowClear
             style={{ width: '100%' }}
             value={priorityFilter}
             onChange={(v) => { setPriorityFilter(v); setPage(1); }}
             options={[
-              { label: '高', value: 'HIGH' },
-              { label: '中', value: 'MEDIUM' },
-              { label: '低', value: 'LOW' },
+              { label: t('testManagement.case.high'), value: 'HIGH' },
+              { label: t('testManagement.case.medium'), value: 'MEDIUM' },
+              { label: t('testManagement.case.low'), value: 'LOW' },
             ]}
           />
         </Col>
         <Col span={5}>
           <Input
-            placeholder="搜索标题"
+            placeholder={t('common.searchPlaceholder')}
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -243,7 +245,7 @@ export default function CaseListPage() {
           <Space>
             {selectedRowKeys.length > 0 && (
               <Button danger icon={<DeleteOutlined />} onClick={handleBatchDelete}>
-                删除 {selectedRowKeys.length} 项
+                {t('common.delete')} {selectedRowKeys.length} {t('common.items')}
               </Button>
             )}
             <Upload
@@ -253,17 +255,17 @@ export default function CaseListPage() {
               disabled={!projectId}
             >
               <Button icon={<UploadOutlined />} disabled={!projectId}>
-                导入 Excel
+                {t('common.import')} Excel
               </Button>
             </Upload>
             <Button icon={<DownloadOutlined />} disabled={!projectId} onClick={handleExport}>
-              导出 Excel
+              {t('common.export')} Excel
             </Button>
             <Button type="primary" icon={<PlusOutlined />}
               disabled={!projectId}
               onClick={() => router.push(`/${locale}/test-management/cases/create?project_id=${projectId}`)}
             >
-              新建用例
+              {t('testManagement.case.create')}
             </Button>
           </Space>
         </Col>
@@ -277,7 +279,7 @@ export default function CaseListPage() {
         pagination={{
           current: page, total, pageSize: 20,
           onChange: (p) => setPage(p),
-          showTotal: (t) => `共 ${t} 条`,
+          showTotal: (totalCount) => t('common.totalCount', { count: totalCount }),
         }}
         rowSelection={{
           selectedRowKeys,

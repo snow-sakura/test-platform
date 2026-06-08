@@ -1,21 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { Button, Select, message, Table, Tag, Space } from 'antd';
-import { getPlans, createPlan, getRun } from '@/lib/api/test-management';
+import { useState, useEffect } from 'react';
+import { Button, Select, message, Table, Tag } from 'antd';
+import { getPlans, getRun } from '@/lib/api/test-management';
 import { getApiProjects } from '@/lib/api/api-testing';
 import type { TestPlan } from '@/lib/api/test-management';
 import type { ApiProject } from '@/lib/api/api-testing';
-import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function ExecutionsPage() {
+  const t = useTranslations();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [plans, setPlans] = useState<TestPlan[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('Failed to load project list', e));
   }, []);
 
   const loadPlans = async () => {
@@ -24,7 +25,7 @@ export default function ExecutionsPage() {
     try {
       const res = await getPlans(projectId);
       setPlans(res.data.results || []);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -34,7 +35,7 @@ export default function ExecutionsPage() {
     <div>
       <div style={{ marginBottom: 16 }}>
         <Select
-          placeholder="请选择项目"
+          placeholder={t('common.selectProject')}
           style={{ width: 300 }}
           value={projectId}
           onChange={setProjectId}
@@ -48,15 +49,15 @@ export default function ExecutionsPage() {
         rowKey="id" loading={loading} dataSource={plans}
         pagination={false} size="small"
         columns={[
-          { title: '计划名称', dataIndex: 'name' },
-          { title: '执行轮次', dataIndex: 'run_count', width: 100 },
-          { title: '是否激活', dataIndex: 'is_active', width: 80,
-            render: (v: boolean) => <Tag color={v ? 'success' : 'default'}>{v ? '是' : '否'}</Tag>,
+          { title: t('testManagement.plan.name'), dataIndex: 'name' },
+          { title: t('testManagement.plan.executionRounds'), dataIndex: 'run_count', width: 100 },
+          { title: t('testManagement.execution.isActive'), dataIndex: 'is_active', width: 80,
+            render: (v: boolean) => <Tag color={v ? 'success' : 'default'}>{v ? t('common.yes') : t('common.no')}</Tag>,
           },
           {
-            title: '操作', width: 120,
+            title: t('common.action'), width: 120,
             render: (_, record) => (
-              <Button type="link" size="small">查看执行</Button>
+              <Button type="link" size="small">{t('testManagement.execution.viewExecution')}</Button>
             ),
           },
         ]}

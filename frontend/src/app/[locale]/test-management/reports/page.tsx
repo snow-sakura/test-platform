@@ -22,15 +22,17 @@ import {
 import type { TestReport, DashboardStats, DefectDistribution, AiEfficiencyItem, TeamWorkloadItem } from '@/lib/api/test-management';
 import { getApiProjects } from '@/lib/api/api-testing';
 import type { ApiProject } from '@/lib/api/api-testing';
+import { useTranslations } from 'next-intl';
 
 export default function ReportsPage() {
+  const t = useTranslations();
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [reports, setReports] = useState<TestReport[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 新图表数据
+  // Chart data
   const [trendData, setTrendData] = useState<{ date: string; total: number; passed: number; failed: number }[]>([]);
   const [failedTop10, setFailedTop10] = useState<{ case_id: number; title: string; fail_count: number }[]>([]);
   const [execSummary, setExecSummary] = useState<{ total: number; passed: number; failed: number; blocked: number; untested: number } | null>(null);
@@ -39,7 +41,7 @@ export default function ReportsPage() {
   const [teamWorkload, setTeamWorkload] = useState<TeamWorkloadItem[]>([]);
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('Failed to load project list', e));
   }, []);
 
   const loadData = async () => {
@@ -64,13 +66,13 @@ export default function ReportsPage() {
       setDefectDist(defectRes.data);
       setAiEfficiency(aiRes.data || []);
       setTeamWorkload(workloadRes.data || []);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { loadData(); }, [projectId]);
 
-  /* 通过率仪表盘 ECharts 配置（useMemo 缓存避免每次渲染重建） */
+  /* Pass rate gauge ECharts config (useMemo for caching) */
   const passRateOption = useMemo(() => stats ? {
     series: [
       {
@@ -105,7 +107,7 @@ export default function ReportsPage() {
     ],
   } : null, [stats]);
 
-  /* 执行概况饼图 */
+  /* Execution overview pie chart */
   const execPieOption = useMemo(() => stats ? {
     tooltip: { trigger: 'item' },
     series: [
@@ -117,29 +119,29 @@ export default function ReportsPage() {
         itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
         label: { show: true, formatter: '{b}: {c}' },
         data: [
-          { value: stats.total_cases, name: '测试用例', itemStyle: { color: '#1677ff' } },
-          { value: stats.total_suites, name: '测试套件', itemStyle: { color: '#52c41a' } },
-          { value: stats.total_plans, name: '测试计划', itemStyle: { color: '#faad14' } },
-          { value: stats.total_runs, name: '执行轮次', itemStyle: { color: '#722ed1' } },
+          { value: stats.total_cases, name: t('testManagement.caseCount'), itemStyle: { color: '#1677ff' } },
+          { value: stats.total_suites, name: t('testManagement.suiteCount'), itemStyle: { color: '#52c41a' } },
+          { value: stats.total_plans, name: t('testManagement.planCount'), itemStyle: { color: '#faad14' } },
+          { value: stats.total_runs, name: t('testManagement.plan.executionRounds'), itemStyle: { color: '#722ed1' } },
         ],
       },
     ],
-  } : null, [stats]);
+  } : null, [stats, t]);
 
-  /* 执行趋势折线图 */
+  /* Execution trend line chart */
   const trendOption = useMemo(() => trendData.length > 0 ? {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['总执行', '通过', '失败'], top: 0 },
+    legend: { data: [t('common.total'), t('common.passed'), t('common.failed')], top: 0 },
     grid: { left: 50, right: 20, bottom: 30, top: 40 },
     xAxis: {
       type: 'category',
-      data: trendData.map((d) => d.date.slice(5)),  // MM-DD 格式
+      data: trendData.map((d) => d.date.slice(5)),  // MM-DD format
       boundaryGap: false,
     },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
       {
-        name: '总执行',
+        name: t('common.total'),
         type: 'line',
         data: trendData.map((d) => d.total),
         smooth: true,
@@ -152,7 +154,7 @@ export default function ReportsPage() {
           ]}},
       },
       {
-        name: '通过',
+        name: t('common.passed'),
         type: 'line',
         data: trendData.map((d) => d.passed),
         smooth: true,
@@ -160,7 +162,7 @@ export default function ReportsPage() {
         itemStyle: { color: '#52c41a' },
       },
       {
-        name: '失败',
+        name: t('common.failed'),
         type: 'line',
         data: trendData.map((d) => d.failed),
         smooth: true,
@@ -168,20 +170,20 @@ export default function ReportsPage() {
         itemStyle: { color: '#ff4d4f' },
       },
     ],
-  } : null, [trendData]);
+  } : null, [trendData, t]);
 
-  /* 失败 TOP10 横向柱状图 */
+  /* Failed TOP10 horizontal bar chart */
   const failedTop10Option = useMemo(() => failedTop10.length > 0 ? {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: (params: any) => {
         const p = params[0];
-        return `${p.name}<br/>失败次数: ${p.value}`;
+        return `${p.name}<br/>${t('common.failed')}: ${p.value}`;
       },
     },
     grid: { left: 200, right: 40, top: 10, bottom: 30 },
-    xAxis: { type: 'value', minInterval: 1, name: '失败次数' },
+    xAxis: { type: 'value', minInterval: 1, name: t('common.failed') },
     yAxis: {
       type: 'category',
       data: failedTop10.map((d) => d.title.length > 30 ? d.title.slice(0, 30) + '...' : d.title),
@@ -195,9 +197,9 @@ export default function ReportsPage() {
       })),
       barMaxWidth: 24,
     }],
-  } : null, [failedTop10]);
+  } : null, [failedTop10, t]);
 
-  /* 执行状态分布饼图 */
+  /* Execution status distribution pie chart */
   const statusPieOption = useMemo(() => execSummary ? {
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     series: [{
@@ -208,15 +210,15 @@ export default function ReportsPage() {
       itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
       label: { show: true, formatter: '{b}: {c}' },
       data: [
-        { value: execSummary.passed, name: '通过', itemStyle: { color: '#52c41a' } },
-        { value: execSummary.failed, name: '失败', itemStyle: { color: '#ff4d4f' } },
-        { value: execSummary.blocked, name: '阻塞', itemStyle: { color: '#faad14' } },
-        { value: execSummary.untested, name: '未测', itemStyle: { color: '#d9d9d9' } },
+        { value: execSummary.passed, name: t('common.passed'), itemStyle: { color: '#52c41a' } },
+        { value: execSummary.failed, name: t('common.failed'), itemStyle: { color: '#ff4d4f' } },
+        { value: execSummary.blocked, name: t('common.blocked'), itemStyle: { color: '#faad14' } },
+        { value: execSummary.untested, name: t('common.untested'), itemStyle: { color: '#d9d9d9' } },
       ],
     }],
-  } : null, [execSummary]);
+  } : null, [execSummary, t]);
 
-  /* 缺陷分布饼图 */
+  /* Defect distribution pie chart */
   const defectPieOption = useMemo(() => defectDist ? {
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     series: [{
@@ -226,17 +228,17 @@ export default function ReportsPage() {
       itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
       label: { show: true, formatter: '{b}: {c}' },
       data: [
-        { value: defectDist.high, name: '高优先级', itemStyle: { color: '#ff4d4f' } },
-        { value: defectDist.medium, name: '中优先级', itemStyle: { color: '#faad14' } },
-        { value: defectDist.low, name: '低优先级', itemStyle: { color: '#52c41a' } },
+        { value: defectDist.high, name: t('common.priorityLabel', { value: t('common.high') }), itemStyle: { color: '#ff4d4f' } },
+        { value: defectDist.medium, name: t('common.priorityLabel', { value: t('common.medium') }), itemStyle: { color: '#faad14' } },
+        { value: defectDist.low, name: t('common.priorityLabel', { value: t('common.low') }), itemStyle: { color: '#52c41a' } },
       ],
     }],
-  } : null, [defectDist]);
+  } : null, [defectDist, t]);
 
-  /* AI 效能对比柱状图 */
+  /* AI efficiency comparison bar chart */
   const aiEfficiencyOption = useMemo(() => aiEfficiency.length > 0 ? {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['AI 生成', '人工创建'], top: 0 },
+    legend: { data: ['AI', 'Manual'], top: 0 },
     grid: { left: 60, right: 20, bottom: 50, top: 40 },
     xAxis: {
       type: 'category',
@@ -246,27 +248,27 @@ export default function ReportsPage() {
     yAxis: { type: 'value', minInterval: 1 },
     series: [
       {
-        name: 'AI 生成',
+        name: 'AI',
         type: 'bar',
         data: aiEfficiency.map((d) => d.ai_generated),
         itemStyle: { color: '#1677ff', borderRadius: [4, 4, 0, 0] },
         barMaxWidth: 24,
       },
       {
-        name: '人工创建',
+        name: 'Manual',
         type: 'bar',
         data: aiEfficiency.map((d) => d.manual),
         itemStyle: { color: '#52c41a', borderRadius: [4, 4, 0, 0] },
         barMaxWidth: 24,
       },
     ],
-  } : null, [aiEfficiency]);
+  } : null, [aiEfficiency, t]);
 
-  /* 团队工作量横向柱状图 */
+  /* Team workload horizontal bar chart */
   const workloadOption = useMemo(() => teamWorkload.length > 0 ? {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: 100, right: 40, top: 10, bottom: 30 },
-    xAxis: { type: 'value', minInterval: 1, name: '执行用例数' },
+    xAxis: { type: 'value', minInterval: 1, name: t('testManagement.execution.title') },
     yAxis: {
       type: 'category',
       data: teamWorkload.map((d) => d.username),
@@ -280,14 +282,14 @@ export default function ReportsPage() {
       })),
       barMaxWidth: 24,
     }],
-  } : null, [teamWorkload]);
+  } : null, [teamWorkload, t]);
 
   return (
     <div>
-      {/* 项目选择 */}
+      {/* Project selection */}
       <div style={{ marginBottom: 16 }}>
         <Select
-          placeholder="请选择项目"
+          placeholder={t('common.selectProject')}
           style={{ width: 300 }}
           value={projectId}
           onChange={setProjectId}
@@ -296,66 +298,66 @@ export default function ReportsPage() {
         />
       </div>
 
-      {/* 统计卡片 */}
+      {/* Stats cards */}
       {stats && (
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={4}>
             <Card size="small">
-              <Statistic title="测试用例" value={stats.total_cases} prefix={<FileTextOutlined />} />
+              <Statistic title={t('testManagement.caseCount')} value={stats.total_cases} prefix={<FileTextOutlined />} />
             </Card>
           </Col>
           <Col span={4}>
             <Card size="small">
-              <Statistic title="测试套件" value={stats.total_suites} prefix={<FileTextOutlined />} />
+              <Statistic title={t('testManagement.suiteCount')} value={stats.total_suites} prefix={<FileTextOutlined />} />
             </Card>
           </Col>
           <Col span={4}>
             <Card size="small">
-              <Statistic title="测试计划" value={stats.total_plans} prefix={<FileTextOutlined />} />
+              <Statistic title={t('testManagement.planCount')} value={stats.total_plans} prefix={<FileTextOutlined />} />
             </Card>
           </Col>
           <Col span={4}>
             <Card size="small">
-              <Statistic title="执行轮次" value={stats.total_runs} prefix={<RiseOutlined />} />
+              <Statistic title={t('testManagement.plan.executionRounds')} value={stats.total_runs} prefix={<RiseOutlined />} />
             </Card>
           </Col>
           <Col span={4}>
             <Card size="small">
-              <Statistic title="今日执行" value={stats.today_executions} prefix={<RiseOutlined />} />
+              <Statistic title={t('testManagement.report.todayExecutions')} value={stats.today_executions} prefix={<RiseOutlined />} />
             </Card>
           </Col>
           <Col span={4}>
             <Card size="small">
-              <Statistic title="待审评审" value={stats.my_pending_reviews} prefix={<CheckCircleOutlined />} />
+              <Statistic title={t('testManagement.report.pendingReviews')} value={stats.my_pending_reviews} prefix={<CheckCircleOutlined />} />
             </Card>
           </Col>
         </Row>
       )}
 
-      {/* 第一行 ECharts 图表：通过率 + 资源分布 + 评审概要 */}
+      {/* Row 1: Pass rate + Resource distribution + Review summary */}
       {stats && (
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={8}>
-            <Card title="通过率" size="small">
+            <Card title={t('testManagement.report.passRate')} size="small">
               {passRateOption && <ReactEChartsCore option={passRateOption} style={{ height: 200 }} />}
             </Card>
           </Col>
           <Col span={8}>
-            <Card title="资源分布" size="small">
+            <Card title={t('testManagement.report.resourceDistribution')} size="small">
               {execPieOption && <ReactEChartsCore option={execPieOption} style={{ height: 200 }} />}
             </Card>
           </Col>
           <Col span={8}>
-            <Card title="评审概要" size="small">
+            <Card title={t('testManagement.report.reviewSummary')} size="small">
               <div style={{ padding: '20px', textAlign: 'center' }}>
                 <Statistic
-                  title="评审总数"
+                  title={t('testManagement.report.totalReviews')}
                   value={stats.total_reviews}
                   valueStyle={{ fontSize: 36, color: '#722ed1' }}
                 />
                 <div style={{ marginTop: 12 }}>
                   <Tag color={stats.my_pending_reviews > 0 ? 'warning' : 'success'}>
-                    待我评审: {stats.my_pending_reviews}
+                  {t('testManagement.report.pendingMyReview', { count: stats.my_pending_reviews })}
                   </Tag>
                 </div>
               </div>
@@ -364,102 +366,102 @@ export default function ReportsPage() {
         </Row>
       )}
 
-      {/* 第二行 ECharts 图表：执行趋势 + 执行状态分布 */}
+      {/* Row 2: Execution trend + Status distribution */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={14}>
-          <Card title="执行趋势（近 14 天）" size="small">
+          <Card title={t('testManagement.report.executionTrend14d')} size="small">
             {trendOption ? (
               <ReactEChartsCore option={trendOption} style={{ height: 260 }} />
             ) : (
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无执行数据
+                {t('common.noData')}
               </div>
             )}
           </Card>
         </Col>
         <Col span={10}>
-          <Card title="执行状态分布" size="small">
+          <Card title={t('testManagement.report.statusDistribution')} size="small">
             {statusPieOption ? (
               <ReactEChartsCore option={statusPieOption} style={{ height: 260 }} />
             ) : (
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无执行数据
+                {t('common.noData')}
               </div>
             )}
           </Card>
         </Col>
       </Row>
 
-      {/* 第三行：失败 TOP10 横向柱状图 */}
+      {/* Row 3: Failed TOP10 */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={24}>
-          <Card title="失败次数最多的 TOP10 用例" size="small">
+          <Card title={t('testManagement.report.failedTop10')} size="small">
             {failedTop10Option ? (
               <ReactEChartsCore option={failedTop10Option} style={{ height: 320 }} />
             ) : (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无失败数据
+                {t('common.noData')}
               </div>
             )}
           </Card>
         </Col>
       </Row>
 
-      {/* 第四行：缺陷分布饼图 + 团队工作量 */}
+      {/* Row 4: Defect distribution + Team workload */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={10}>
-          <Card title="缺陷分布（按优先级）" size="small">
+          <Card title={t('testManagement.report.defectDistribution')} size="small">
             {defectPieOption && Object.values(defectDist || {}).some(v => v > 0) ? (
               <ReactEChartsCore option={defectPieOption} style={{ height: 260 }} />
             ) : (
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无缺陷数据
+                {t('common.noData')}
               </div>
             )}
           </Card>
         </Col>
         <Col span={14}>
-          <Card title="团队工作量" size="small">
+          <Card title={t('testManagement.report.teamWorkload')} size="small">
             {workloadOption ? (
               <ReactEChartsCore option={workloadOption} style={{ height: 260 }} />
             ) : (
               <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无执行数据
+                {t('common.noData')}
               </div>
             )}
           </Card>
         </Col>
       </Row>
 
-      {/* 第五行：AI 效能对比 */}
+      {/* Row 5: AI efficiency comparison */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={24}>
-          <Card title="AI 生成 vs 人工创建效能对比（近 12 月）" size="small">
+          <Card title={t('testManagement.report.aiEfficiency12m')} size="small">
             {aiEfficiencyOption ? (
               <ReactEChartsCore option={aiEfficiencyOption} style={{ height: 300 }} />
             ) : (
               <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                暂无生成数据
+                {t('common.noData')}
               </div>
             )}
           </Card>
         </Col>
       </Row>
 
-      {/* 报告列表 */}
+      {/* Report list */}
       <Tabs
         items={[
           {
             key: 'reports',
-            label: '报告列表',
+            label: t('testManagement.reports'),
             children: (
               <Table
                 rowKey="id" loading={loading} dataSource={reports}
                 pagination={false} size="small"
                 columns={[
-                  { title: '报告名称', dataIndex: 'name' },
-                  { title: '类型', dataIndex: 'report_type', width: 100 },
-                  { title: '创建时间', dataIndex: 'created_at', width: 180 },
+                  { title: t('common.name'), dataIndex: 'name' },
+                  { title: t('common.type'), dataIndex: 'report_type', width: 100 },
+                  { title: t('common.createdAt'), dataIndex: 'created_at', width: 180 },
                 ]}
               />
             ),

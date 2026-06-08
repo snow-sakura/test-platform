@@ -6,6 +6,7 @@ import {
   FolderOutlined, FolderOpenOutlined, FileOutlined,
   PlusOutlined, DeleteOutlined, EditOutlined,
 } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import type { DataNode, EventDataNode } from 'antd/es/tree';
 import { createCollection, deleteCollection, getCollectionTree, updateCollection } from '@/lib/api/api-testing';
 import type { ApiCollectionTreeNode } from '@/lib/api/api-testing';
@@ -17,8 +18,10 @@ interface Props {
   onRefresh?: () => void;
 }
 
-/** 接口集合树组件 */
+/** API collection tree component */
 export default function CollectionTree({ projectId, onSelectCollection, onSelectRequest, onRefresh }: Props) {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
@@ -43,7 +46,7 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
     loadTree();
   }, [loadTree]);
 
-  /** 将扁平树结构转为 Ant Design Tree DataNode */
+  /** Convert flat tree structure to Ant Design Tree DataNode */
   const buildTreeNodes = (nodes: ApiCollectionTreeNode[]): DataNode[] => {
     return nodes.map((node) => ({
       key: `collection-${node.id}`,
@@ -60,49 +63,49 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
     }));
   };
 
-  /** 创建集合 */
+  /** Create collection */
   const handleCreate = async (parentId?: number) => {
     if (!projectId) return;
-    const name = prompt('请输入集合名称：');
+    const name = prompt(t('collection.namePrompt'));
     if (!name) return;
 
     try {
       await createCollection({ project_id: projectId, name, parent_id: parentId || null });
-      message.success('集合创建成功');
+      message.success(t('collection.createSuccess'));
       loadTree();
       onRefresh?.();
     } catch {
-      message.error('创建失败');
+      message.error(t('collection.createFailed'));
     }
   };
 
-  /** 删除集合 */
+  /** Delete collection */
   const handleDelete = async (id: number) => {
     Modal.confirm({
-      title: '确定删除此集合？',
-      content: '删除集合将同时删除其下所有子集和请求，不可恢复。',
+      title: t('collection.deleteConfirm'),
+      content: t('collection.deleteWarning'),
       onOk: async () => {
         try {
           await deleteCollection(id);
-          message.success('集合已删除');
+          message.success(t('collection.deleted'));
           loadTree();
           onRefresh?.();
         } catch {
-          message.error('删除失败');
+          message.error(t('collection.deleteFailed'));
         }
       },
     });
   };
 
-  /** 重命名集合 */
+  /** Rename collection */
   const handleRename = async (id: number, name: string) => {
     try {
       await updateCollection(id, { name });
-      message.success('重命名成功');
+      message.success(t('collection.renameSuccess'));
       setRenameModal(null);
       loadTree();
     } catch {
-      message.error('重命名失败');
+      message.error(t('collection.renameFailed'));
     }
   };
 
@@ -117,19 +120,19 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
     }
   };
 
-  /** 右键菜单 */
+  /** Context menu */
   const menuItems = (nodeType: string, nodeId: number) => {
     const items = [];
     if (nodeType === 'collection') {
       items.push(
-        { key: 'add', icon: <PlusOutlined />, label: '新建子集合', onClick: () => handleCreate(nodeId) },
-        { key: 'rename', icon: <EditOutlined />, label: '重命名', onClick: () => {
+        { key: 'add', icon: <PlusOutlined />, label: t('collection.createSub'), onClick: () => handleCreate(nodeId) },
+        { key: 'rename', icon: <EditOutlined />, label: t('collection.rename'), onClick: () => {
           const node = findNode(treeData, `collection-${nodeId}`);
           const nodeData = (node as any)?.data;
           setRenameModal({ id: nodeId, name: nodeData?.name || '' });
         }},
         { type: 'divider' as const },
-        { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true, onClick: () => handleDelete(nodeId) },
+        { key: 'delete', icon: <DeleteOutlined />, label: tc('delete'), danger: true, onClick: () => handleDelete(nodeId) },
       );
     }
     return items;
@@ -146,7 +149,7 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
     return null;
   };
 
-  /** 树节点标题渲染（带右键菜单） */
+  /** Tree node title render (with context menu) */
   const titleRender = (node: DataNode) => {
     const key = node.key as string;
     const nodeType = key?.startsWith('collection-') ? 'collection' : 'request';
@@ -162,10 +165,10 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
   return (
     <div>
       <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <strong style={{ fontSize: 13 }}>接口集合</strong>
+        <strong style={{ fontSize: 13 }}>{t('collection.title')}</strong>
         {projectId && (
           <Button type="link" icon={<PlusOutlined />} size="small" onClick={() => handleCreate()}>
-            新建集合
+            {t('collection.create')}
           </Button>
         )}
       </div>
@@ -185,12 +188,12 @@ export default function CollectionTree({ projectId, onSelectCollection, onSelect
       </Spin>
 
       {!projectId && (
-        <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>请先选择项目</div>
+        <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>{t('collection.selectProjectFirst')}</div>
       )}
 
       {renameModal && (
         <Modal
-          title="重命名集合"
+          title={t('collection.rename')}
           open
           onOk={() => handleRename(renameModal.id, renameModal.name)}
           onCancel={() => setRenameModal(null)}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Table, Button, message, Modal, Form, Input, Select, Space, Tag, Switch, Tabs } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import {
@@ -10,6 +11,7 @@ import {
 import type { UiNotificationConfig, UiNotificationLog } from '@/lib/api/ui-automation';
 
 export default function UiNotificationsPage() {
+  const t = useTranslations();
   const [configs, setConfigs] = useState<UiNotificationConfig[]>([]);
   const [logs, setLogs] = useState<UiNotificationLog[]>([]);
   const [logTotal, setLogTotal] = useState(0);
@@ -23,7 +25,7 @@ export default function UiNotificationsPage() {
     try {
       const res = await getUiNotifications();
       setConfigs(res.data || []);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setConfigLoading(false); }
   };
 
@@ -42,61 +44,61 @@ export default function UiNotificationsPage() {
     try {
       if (editing) {
         await updateUiNotification(editing.id, values);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         await createUiNotification(values);
-        message.success('创建成功');
+        message.success(t('common.createSuccess'));
       }
       setModalOpen(false);
       setEditing(null);
       form.resetFields();
       loadConfigs();
-    } catch { message.error('操作失败'); }
+    } catch { message.error(t('common.operationFailed')); }
   };
 
   const handleTest = async (id: number) => {
     try {
       const res = await testUiNotification(id);
       if (res.data.success) {
-        message.success('通知发送成功');
+        message.success(t('apiTesting.notification.testSuccess'));
       } else {
-        message.warning(`发送失败: ${res.data.error || ''}`);
+        message.warning(t('apiTesting.notification.testFailed') + ': ' + (res.data.error || ''));
       }
-    } catch { message.error('测试失败'); }
+    } catch { message.error(t('common.operationFailed')); }
   };
 
   return (
     <div>
       <Tabs items={[
         {
-          key: 'configs', label: '通知配置',
+          key: 'configs', label: t('uiAutomation.notificationConfigs'),
           children: (
             <div>
               <div style={{ marginBottom: 16 }}>
                 <Button type="primary" icon={<PlusOutlined />}
                   onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}
-                >新建通知配置</Button>
+                >{t('apiTesting.notification.create')}</Button>
               </div>
               <Table rowKey="id" loading={configLoading} dataSource={configs} size="small" pagination={false}
                 columns={[
-                  { title: '名称', dataIndex: 'name', width: 150 },
-                  { title: '类型', dataIndex: 'notify_type', width: 80, render: (v: string) => <Tag>{v}</Tag> },
+                  { title: t('common.name'), dataIndex: 'name', width: 150 },
+                  { title: t('common.type'), dataIndex: 'notify_type', width: 80, render: (v: string) => <Tag>{v}</Tag> },
                   { title: 'Webhook URL', dataIndex: 'webhook_url', ellipsis: true },
                   {
-                    title: '启用', dataIndex: 'is_active', width: 60,
-                    render: (v: boolean) => <Tag color={v ? 'green' : 'red'}>{v ? '是' : '否'}</Tag>,
+                    title: t('apiTesting.notification.enabled'), dataIndex: 'is_active', width: 60,
+                    render: (v: boolean) => <Tag color={v ? 'green' : 'red'}>{v ? t('common.yes') : t('common.no')}</Tag>,
                   },
-                  { title: '创建时间', dataIndex: 'created_at', width: 170 },
+                  { title: t('common.createdAt'), dataIndex: 'created_at', width: 170 },
                   {
-                    title: '操作', width: 200,
+                    title: t('common.action'), width: 200,
                     render: (_, record) => (
                       <Space>
-                        <Button type="link" size="small" onClick={() => handleTest(record.id)}>测试</Button>
+                        <Button type="link" size="small" onClick={() => handleTest(record.id)}>{t('common.test')}</Button>
                         <Button type="link" size="small" icon={<EditOutlined />}
                           onClick={() => { setEditing(record); form.setFieldsValue(record); setModalOpen(true); }}
-                        >编辑</Button>
+                        >{t('common.edit')}</Button>
                         <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                          onClick={async () => { try { await deleteUiNotification(record.id); message.success('已删除'); loadConfigs(); } catch { message.error('删除失败'); } }}
+                          onClick={async () => { try { await deleteUiNotification(record.id); message.success(t('common.deleted')); loadConfigs(); } catch { message.error(t('common.deleteFailed')); } }}
                         />
                       </Space>
                     ),
@@ -107,46 +109,46 @@ export default function UiNotificationsPage() {
           ),
         },
         {
-          key: 'logs', label: '通知日志',
+          key: 'logs', label: t('uiAutomation.notificationLogs'),
           children: (
             <Table rowKey="id" dataSource={logs}
-              pagination={{ total: logTotal, pageSize: 20, onChange: loadLogs, showTotal: (t) => `共 ${t} 条` }}
+              pagination={{ total: logTotal, pageSize: 20, onChange: loadLogs, showTotal: (n) => t('common.totalCount', { count: n }) }}
               size="small"
               columns={[
-                { title: '事件类型', dataIndex: 'event_type', width: 100 },
+                { title: t('appAutomation.eventType'), dataIndex: 'event_type', width: 100 },
                 {
-                  title: '状态', dataIndex: 'status', width: 80,
+                  title: t('common.status'), dataIndex: 'status', width: 80,
                   render: (v: string) => <Tag color={v === 'success' ? 'green' : 'red'}>{v}</Tag>,
                 },
-                { title: '消息', dataIndex: 'message', ellipsis: true },
-                { title: '发送时间', dataIndex: 'sent_at', width: 170 },
+                { title: t('appAutomation.message'), dataIndex: 'message', ellipsis: true },
+                { title: t('appAutomation.sentAt'), dataIndex: 'sent_at', width: 170 },
               ]}
             />
           ),
         },
       ]} />
 
-      <Modal title={editing ? '编辑通知配置' : '新建通知配置'} open={modalOpen}
+      <Modal title={editing ? t('apiTesting.notification.edit') : t('apiTesting.notification.create')} open={modalOpen}
         onOk={handleSubmit} onCancel={() => { setModalOpen(false); setEditing(null); }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="名称" rules={[{ required: true }]}>
-            <Input placeholder="如 飞书-测试通知群" />
+          <Form.Item name="name" label={t('common.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('common.inputPlaceholder')} />
           </Form.Item>
-          <Form.Item name="notify_type" label="通知类型" rules={[{ required: true }]} initialValue="feishu">
+          <Form.Item name="notify_type" label={t('apiTesting.notification.type')} rules={[{ required: true }]} initialValue="feishu">
             <Select options={[
-              { label: '飞书', value: 'feishu' },
-              { label: '企业微信', value: 'wechat' },
-              { label: '钉钉', value: 'dingtalk' },
+              { label: t('apiTesting.notification.feishu'), value: 'feishu' },
+              { label: t('apiTesting.notification.wechat'), value: 'wechat' },
+              { label: t('apiTesting.notification.dingtalk'), value: 'dingtalk' },
             ]} />
           </Form.Item>
           <Form.Item name="webhook_url" label="Webhook URL" rules={[{ required: true }]}>
             <Input placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." />
           </Form.Item>
-          <Form.Item name="secret" label="签名密钥">
-            <Input.Password placeholder="可选" />
+          <Form.Item name="secret" label={t('apiTesting.notification.signKey')}>
+            <Input.Password placeholder={t('common.optional')} />
           </Form.Item>
-          <Form.Item name="is_active" label="是否启用" valuePropName="checked" initialValue={true}>
+          <Form.Item name="is_active" label={t('apiTesting.notification.enabled')} valuePropName="checked" initialValue={true}>
             <Switch />
           </Form.Item>
         </Form>

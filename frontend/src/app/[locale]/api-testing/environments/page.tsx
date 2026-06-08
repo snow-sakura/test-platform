@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Table, Tabs, Tag, Space, message, Popconfirm, Modal, Form, Input } from 'antd';
 import { PlusOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import type { ColumnsType } from 'antd/es/table';
 import {
   getEnvironments, createEnvironment, updateEnvironment,
@@ -11,8 +12,10 @@ import {
 import type { ApiEnvironment } from '@/lib/api/api-testing';
 import KeyValueEditor from '@/components/api-testing/KeyValueEditor';
 
-/** 环境管理页面 */
+/** Environment management page */
 export default function EnvironmentsPage() {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [envs, setEnvs] = useState<ApiEnvironment[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('global');
@@ -39,7 +42,7 @@ export default function EnvironmentsPage() {
       } else {
         await createEnvironment({ ...values, env_type: envType });
       }
-      message.success('保存成功');
+      message.success(t('environment.saveSuccess'));
       setModalOpen(false);
       fetchData();
     } catch (err: any) {
@@ -50,44 +53,44 @@ export default function EnvironmentsPage() {
   const handleActivate = async (id: number) => {
     try {
       await activateEnvironment(id);
-      message.success('环境已激活');
+      message.success(t('environment.active'));
       fetchData();
     } catch {
-      message.error('激活失败');
+      message.error(t('environment.activateFailed'));
     }
   };
 
   const columns: ColumnsType<ApiEnvironment> = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: tc('name'), dataIndex: 'name', key: 'name' },
     {
-      title: '变量数', key: 'var_count',
+      title: t('environment.variableCount'), key: 'var_count',
       render: (_, r) => Object.keys(r.variables || {}).length,
     },
     {
-      title: '状态', dataIndex: 'is_active', key: 'is_active', width: 100,
-      render: (v: boolean) => v ? <Tag icon={<CheckCircleOutlined />} color="success">已激活</Tag> : <Tag>未激活</Tag>,
+      title: tc('status'), dataIndex: 'is_active', key: 'is_active', width: 100,
+      render: (v: boolean) => v ? <Tag icon={<CheckCircleOutlined />} color="success">{t('environment.active')}</Tag> : <Tag>{t('environment.inactive')}</Tag>,
     },
-    { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
+    { title: tc('createdAt'), dataIndex: 'created_at', key: 'created_at', width: 180 },
     {
-      title: '操作', key: 'actions', width: 200,
+      title: tc('action'), key: 'actions', width: 200,
       render: (_, record) => (
         <Space>
           {!record.is_active && (
             <Button type="link" size="small" icon={<CheckCircleOutlined />} onClick={() => handleActivate(record.id)}>
-              激活
+              {t('environment.activate')}
             </Button>
           )}
           <Button type="link" size="small" onClick={() => {
             setEditRecord(record);
             form.setFieldsValue(record);
             setModalOpen(true);
-          }}>编辑</Button>
-          <Popconfirm title="确定删除？" onConfirm={async () => {
+          }}>{tc('edit')}</Button>
+          <Popconfirm title={t('environment.deleteConfirm')} onConfirm={async () => {
             await deleteEnvironment(record.id);
-            message.success('已删除');
+            message.success(t('environment.deleted'));
             fetchData();
           }}>
-            <Button type="link" danger size="small">删除</Button>
+            <Button type="link" danger size="small">{tc('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -100,8 +103,8 @@ export default function EnvironmentsPage() {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: 'global', label: '全局环境' },
-          { key: 'local', label: '项目环境' },
+          { key: 'global', label: t('environment.global') },
+          { key: 'local', label: t('environment.project') },
         ]}
         tabBarExtraContent={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => {
@@ -109,7 +112,7 @@ export default function EnvironmentsPage() {
             form.resetFields();
             setModalOpen(true);
           }}>
-            新建环境
+            {t('environment.create')}
           </Button>
         }
       />
@@ -117,20 +120,20 @@ export default function EnvironmentsPage() {
       <Table rowKey="id" columns={columns} dataSource={envs} loading={loading} pagination={false} />
 
       <Modal
-        title={editRecord ? '编辑环境' : '新建环境'}
+        title={editRecord ? t('environment.editEnv') : t('environment.create')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         width={600}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="环境名称" rules={[{ required: true }]}>
-            <Input placeholder="如：测试环境、预发布环境" />
+          <Form.Item name="name" label={t('environment.name')} rules={[{ required: true }]}>
+            <Input placeholder={tc('inputPlaceholder')} />
           </Form.Item>
-          <Form.Item name="variables" label="环境变量" initialValue={[]}>
+          <Form.Item name="variables" label={t('environment.variables')} initialValue={[]}>
             <KeyValueEditor
-              keyPlaceholder="变量名（如：base_url）"
-              valuePlaceholder="变量值（如：http://localhost:8080）"
+              keyPlaceholder={t('environment.varName')}
+              valuePlaceholder={t('environment.varValue')}
             />
           </Form.Item>
         </Form>

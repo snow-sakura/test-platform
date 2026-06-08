@@ -37,7 +37,7 @@ export default function CiCdPipelinesPage() {
       const res = await getPipelines({ page, page_size: 20 });
       setData(res.data);
     } catch {
-      message.error('加载管道列表失败');
+      message.error(t('ciCd.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -48,10 +48,10 @@ export default function CiCdPipelinesPage() {
   const handleRerun = async (id: number) => {
     try {
       await rerunPipeline(id);
-      message.success('管道已重新执行');
+      message.success(t('ciCd.rerunSuccess'));
       fetchData();
     } catch {
-      message.error('重新执行失败');
+      message.error(t('ciCd.rerunFailed'));
     }
   };
 
@@ -126,15 +126,15 @@ export default function CiCdPipelinesPage() {
   return (
     <div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}><Card size="small"><Statistic title="总执行" value={stats.total} suffix="次" /></Card></Col>
-        <Col span={6}><Card size="small"><Statistic title="执行中" value={stats.running} valueStyle={{ color: '#1890ff' }} /></Card></Col>
-        <Col span={6}><Card size="small"><Statistic title="已通过" value={stats.completed} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col span={6}><Card size="small"><Statistic title="已失败" value={stats.failed} valueStyle={{ color: '#ff4d4f' }} /></Card></Col>
+        <Col span={6}><Card size="small"><Statistic title={t('ciCd.totalExecutions')} value={stats.total} suffix={t('ciCd.count')} /></Card></Col>
+        <Col span={6}><Card size="small"><Statistic title={t('ciCd.running')} value={stats.running} valueStyle={{ color: '#1890ff' }} /></Card></Col>
+        <Col span={6}><Card size="small"><Statistic title={t('ciCd.passed')} value={stats.completed} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+        <Col span={6}><Card size="small"><Statistic title={t('ciCd.failed')} value={stats.failed} valueStyle={{ color: '#ff4d4f' }} /></Card></Col>
       </Row>
 
       <Card
         size="small" title={t('ciCd.pipelines')}
-        extra={<Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>刷新</Button>}
+        extra={<Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>{t('ciCd.refresh')}</Button>}
       >
         <Table
           dataSource={data.results}
@@ -143,7 +143,7 @@ export default function CiCdPipelinesPage() {
           loading={loading}
           pagination={{
             current: page, total: data.count, pageSize: 20,
-            onChange: setPage, showTotal: (total) => `共 ${total} 条`,
+            onChange: setPage, showTotal: (total) => t('common.totalCount', { count: total }),
           }}
           expandable={{
             expandedRowRender: (record) => <PipelineSteps pipelineId={record.id} />,
@@ -157,6 +157,7 @@ export default function CiCdPipelinesPage() {
 }
 
 function PipelineSteps({ pipelineId }: { pipelineId: number }) {
+  const t = useTranslations();
   const [steps, setSteps] = useState<PipelineStepResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -173,22 +174,22 @@ function PipelineSteps({ pipelineId }: { pipelineId: number }) {
     return () => { cancelled = true; };
   }, [pipelineId]);
 
-  if (loading) return <Text type="secondary">加载中...</Text>;
+  if (loading) return <Text type="secondary">{t('ciCd.loading')}</Text>;
 
   return (
     <Table
       dataSource={steps}
       columns={[
-        { title: '顺序', dataIndex: 'step_order', key: 'step_order', width: 60 },
-        { title: '模块', dataIndex: 'module_type', key: 'module_type', width: 120, render: (v: string) => getModuleLabel(v) },
-        { title: '状态', dataIndex: 'status', key: 'status', width: 100, render: (v: string) => {
+        { title: t('ciCd.order'), dataIndex: 'step_order', key: 'step_order', width: 60 },
+        { title: t('ciCd.module'), dataIndex: 'module_type', key: 'module_type', width: 120, render: (v: string) => getModuleLabel(v) },
+        { title: t('ciCd.status'), dataIndex: 'status', key: 'status', width: 100, render: (v: string) => {
           const { STEP_STATUS_MAP } = require('@/lib/api/ci-cd');
           const s = STEP_STATUS_MAP[v] || { color: 'default', label: v };
           return <Tag color={s.color}>{s.label}</Tag>;
         }},
-        { title: '结果', dataIndex: 'result', key: 'result', render: (v: any) => v ? `通过: ${v.passed || 0} / 失败: ${v.failed || 0}` : '-' },
-        { title: '耗时', dataIndex: 'duration_ms', key: 'duration_ms', width: 80, render: (v: number | null) => v ? `${(v / 1000).toFixed(1)}s` : '-' },
-        { title: '错误', dataIndex: 'error_message', key: 'error_message', ellipsis: true },
+        { title: t('ciCd.result'), dataIndex: 'result', key: 'result', render: (v: any) => v ? `${t('ciCd.through')}: ${v.passed || 0} / ${t('ciCd.fail')}: ${v.failed || 0}` : '-' },
+        { title: t('ciCd.duration'), dataIndex: 'duration_ms', key: 'duration_ms', width: 80, render: (v: number | null) => v ? `${(v / 1000).toFixed(1)}s` : '-' },
+        { title: t('ciCd.error'), dataIndex: 'error_message', key: 'error_message', ellipsis: true },
       ]}
       rowKey="id" pagination={false} size="small"
     />

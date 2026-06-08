@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目简介
 
-TestPlate 是一个 AI 驱动的全栈测试管理平台。当前版本 V3.0（知识库 & 系统设置），已完成用户认证、项目管理、文档管理、AI 测试管理、知识库和系统设置。
+TestPlate 是一个 AI 驱动的全栈测试管理平台。当前版本 V6.0（RBAC 权限系统 & 平台增强），已完成用户认证、RBAC 权限控制、项目管理、文档管理、AI 测试管理、知识库、系统设置、接口测试、UI/APP 自动化、AI 智能模式等全部模块。
 
 - **后端**：FastAPI + SQLAlchemy 2.0 (async) + Alembic + asyncmy + MySQL
 - **前端**：Next.js 14 (App Router) + Ant Design 5 + Zustand 4 + next-intl 3 + Axios + TypeScript
@@ -47,6 +47,7 @@ test-platform/
 │   ├── app/pagination.py  # DRF 兼容分页工具（PaginatedResponse）
 │   ├── app/modules/       # 业务模块
 │   │   ├── auth/          # ── 用户认证（JWT + bcrypt）
+│   │   ├── rbac/          # ── RBAC 角色权限（角色/权限/用户角色分配）
 │   │   ├── projects/      # ── 项目管理（models/crud/schemas/api/filters）
 │   │   ├── documents/     # ── 文档管理（上传/解析/CRUD）
 │   │   ├── test_points/   # ── 测试点管理
@@ -71,8 +72,8 @@ test-platform/
 │   └── src/
 │       ├── app/[locale]/  # 国际化路由页面
 │       ├── lib/           # Axios 实例 + API 封装
-│       ├── stores/        # Zustand 状态
-│       └── components/    # Layout + 业务组件 + AI 功能组件
+│       ├── stores/        # Zustand 状态（auth-store / permission-store / ...）
+│       └── components/    # Layout（含 PermissionGate）+ 业务组件 + AI 功能组件
 ├── ai_doc/                # 需求文档（18 功能模块 × 7 迭代版本）
 ├── todo.md                # 版本路线 + 开发日志
 ├── CLAUDE.md
@@ -119,6 +120,24 @@ API 请求 → FastAPI Route (async) → CRUD (async) → SQLAlchemy Select → 
 
 `app/pagination.py` 的 `paginate()` 函数封装了计数、排序、偏移、next/previous URL 构造。
 
+### RBAC 权限约定
+
+后端 API 使用 `Depends(require_permission("module.action"))` 进行权限控制，权限 codename 格式为 `<模块>.<操作>`：
+
+| 操作 | 说明 |
+|------|------|
+| `view` | 查看列表/详情 |
+| `create` | 新增 |
+| `edit` | 编辑/更新 |
+| `delete` | 删除 |
+| `execute` | 执行/运行 |
+
+前端通过三个核心组件实现权限控制：
+
+- **`PermissionGate`**：包裹页面/组件，支持 `codename`（单权限）和 `anyCodenames`（多权限任一即可），fallback 支持 `hide`（隐藏）、`disabled`（置灰）、`forbidden`（403 页面）
+- **`usePermissions()` Hook**：组件挂载时自动从后端加载权限，返回 `hasPermission / hasAnyPermission / hasAllPermissions` 方法
+- **`Sidebar` 权限过滤**：`MENU_PERMISSIONS` 映射配置，无权限菜单自动隐藏
+
 ### 枚举字段的显示值映射
 
 SQLAlchemy 用 `Enum` 存数据库（如 `"active"`），Pydantic Response 通过 `model_post_init` 自动填充 `status_display`：
@@ -138,6 +157,7 @@ def model_post_init(self, __context) -> None:
 - **状态**：Zustand + persist（localStorage key: `app-store`），管理 `sidebarCollapsed`、`language`
 - **i18n**：next-intl v3，JSON 在 `messages/`，命名空间组织（`nav`/`home`/`common`/`project`）
 - **UI**：Ant Design 组件，避用原生 HTML，Layout 在 `components/layout/`
+- **权限控制**：`PermissionGate` 组件包裹页面/组件，`usePermissions()` hook 查询权限，permission-store 维护全局权限状态，`Sidebar` 按 `MENU_PERMISSIONS` 过滤菜单
 - **'use client'**：交互/状态/路由跳转的页面级组件需要；纯展示组件不需要
 
 ## 数据库 & 迁移

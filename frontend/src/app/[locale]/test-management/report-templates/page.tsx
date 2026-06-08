@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Card, Table, Button, Modal, Form, Input, message, Space, Popconfirm, Switch, Tag,
 } from 'antd';
@@ -16,6 +17,7 @@ interface ReportTemplate {
 }
 
 export default function ReportTemplatesPage() {
+  const t = useTranslations();
   const [data, setData] = useState<ReportTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,7 +30,7 @@ export default function ReportTemplatesPage() {
     try {
       const res = await request.get<{ count: number; results: ReportTemplate[] }>('/api/test-management/report-templates');
       setData(res.data.results || []);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -40,36 +42,36 @@ export default function ReportTemplatesPage() {
     try {
       if (editing) {
         await request.put(`/api/test-management/report-templates/${editing.id}`, values);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         await request.post('/api/test-management/report-templates', {
           ...values,
           template_config: { sections: ['summary', 'details', 'charts'] },
         });
-        message.success('创建成功');
+        message.success(t('common.createSuccess'));
       }
       setModalOpen(false);
       setEditing(null);
       form.resetFields();
       loadData();
-    } catch { message.error(editing ? '更新失败' : '创建失败'); }
+    } catch { message.error(editing ? t('common.updateFailed') : t('common.createFailed')); }
     finally { setSubmitting(false); }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await request.delete(`/api/test-management/report-templates/${id}`);
-      message.success('已删除');
+      message.success(t('common.deleted'));
       loadData();
-    } catch { message.error('删除失败'); }
+    } catch { message.error(t('common.deleteFailed')); }
   };
 
   const handleSetDefault = async (id: number) => {
     try {
       await request.put(`/api/test-management/report-templates/${id}`, { is_default: true });
-      message.success('已设为默认模板');
+      message.success(t('testManagement.reportTemplate.setDefaultSuccess'));
       loadData();
-    } catch { message.error('设置失败'); }
+    } catch { message.error(t('testManagement.reportTemplate.setDefaultFailed')); }
   };
 
   const openCreate = () => {
@@ -91,30 +93,30 @@ export default function ReportTemplatesPage() {
     <div>
       <div style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          新建报告模板
+          {t('testManagement.reportTemplate.create')}
         </Button>
       </div>
 
       <Table rowKey="id" loading={loading} dataSource={data} size="small" pagination={false}
         columns={[
-          { title: 'ID', dataIndex: 'id', width: 60 },
-          { title: '模板名称', dataIndex: 'name', width: 200 },
+          { title: t('common.id'), dataIndex: 'id', width: 60 },
+          { title: t('testManagement.reportTemplate.name'), dataIndex: 'name', width: 200 },
           {
-            title: '默认', dataIndex: 'is_default', width: 80,
-            render: (v: boolean) => v ? <Tag color="gold">默认</Tag> : '-',
+            title: t('testManagement.reportTemplate.isDefault'), dataIndex: 'is_default', width: 80,
+            render: (v: boolean) => v ? <Tag color="gold">{t('testManagement.reportTemplate.isDefault')}</Tag> : '-',
           },
-          { title: '创建时间', dataIndex: 'created_at', width: 170 },
+          { title: t('common.createdAt'), dataIndex: 'created_at', width: 170 },
           {
-            title: '操作', width: 200,
+            title: t('common.action'), width: 200,
             render: (_, record) => (
               <Space>
-                <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
+                <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>{t('common.edit')}</Button>
                 {!record.is_default && (
                   <Button size="small" icon={<StarOutlined />} onClick={() => handleSetDefault(record.id)}>
-                    设为默认
+                    {t('testManagement.reportTemplate.setDefault')}
                   </Button>
                 )}
-                <Popconfirm title="确定删除？" onConfirm={() => handleDelete(record.id)}>
+                <Popconfirm title={t('testManagement.reportTemplate.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
                   <Button type="link" danger size="small" icon={<DeleteOutlined />} />
                 </Popconfirm>
               </Space>
@@ -124,7 +126,7 @@ export default function ReportTemplatesPage() {
       />
 
       <Modal
-        title={editing ? '编辑报告模板' : '新建报告模板'}
+        title={editing ? t('testManagement.reportTemplate.edit') : t('testManagement.reportTemplate.create')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => { setModalOpen(false); setEditing(null); form.resetFields(); }}
@@ -132,10 +134,10 @@ export default function ReportTemplatesPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="模板名称" rules={[{ required: true, message: '请输入模板名称' }]}>
-            <Input placeholder="如 标准测试报告" />
+          <Form.Item name="name" label={t('testManagement.reportTemplate.name')} rules={[{ required: true, message: t('testManagement.reportTemplate.nameRequired') }]}>
+            <Input placeholder={t('testManagement.reportTemplate.namePlaceholder')} />
           </Form.Item>
-          <Form.Item name="template_config" label="配置（JSON 格式）">
+          <Form.Item name="template_config" label={t('testManagement.reportTemplate.configJSON')}>
             <Input.TextArea rows={6}
               placeholder='{"sections": ["summary", "details", "charts"]}'
             />

@@ -5,6 +5,7 @@ import {
   Button, Input, Select, message, Spin, Tabs, Space,
 } from 'antd';
 import { SendOutlined, SaveOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import { getRequest, updateRequest, executeRequest } from '@/lib/api/api-testing';
 import type { ApiRequest, ExecuteResponse } from '@/lib/api/api-testing';
 import KeyValueEditor from './KeyValueEditor';
@@ -18,8 +19,10 @@ interface Props {
   onSaved?: () => void;
 }
 
-/** 完整请求编辑器：方法选择 + URL输入 + 请求头/参数/Body + 发送 + 响应展示 */
+/** Full request editor: method selector + URL input + headers/params/body + send + response display */
 export default function RequestEditor({ requestId, environmentId, projectId, onSaved }: Props) {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [request, setRequest] = useState<ApiRequest | null>(null);
@@ -68,13 +71,13 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
       setBodyType(r.body_type || 'none');
       setResponse(null);
     } catch {
-      message.error('加载请求失败');
+      message.error(t('interface.loadingRequest'));
     } finally {
       setLoading(false);
     }
   };
 
-  /** 保存请求 */
+  /** Save request */
   const handleSave = async () => {
     if (!requestId || !request) return;
     try {
@@ -82,14 +85,14 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
         method, url, headers, query_params: queryParams,
         body, body_type: bodyType,
       });
-      message.success('保存成功');
+      message.success(t('interface.saveSuccess'));
       onSaved?.();
     } catch {
-      message.error('保存失败');
+      message.error(t('interface.saveFailed'));
     }
   };
 
-  /** 发送请求 */
+  /** Send request */
   const handleSend = async () => {
     setSending(true);
     try {
@@ -101,13 +104,13 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
       });
       setResponse(res.data);
     } catch {
-      message.error('请求执行失败');
+      message.error(t('interface.executeFailed'));
     } finally {
       setSending(false);
     }
   };
 
-  /** 切换收藏 */
+  /** Toggle favorite */
   const handleToggleFavorite = async () => {
     if (!requestId || !request) return;
     try {
@@ -121,31 +124,31 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
   const tabItems = [
     {
       key: 'params',
-      label: 'URL 参数',
+      label: t('interface.params'),
       children: (
         <KeyValueEditor
           value={queryParams}
           onChange={setQueryParams}
-          keyPlaceholder="参数名"
-          valuePlaceholder="参数值"
+          keyPlaceholder={t('interface.paramName')}
+          valuePlaceholder={t('interface.paramValue')}
         />
       ),
     },
     {
       key: 'headers',
-      label: '请求头',
+      label: t('interface.headers'),
       children: (
         <KeyValueEditor
           value={headers}
           onChange={setHeaders}
-          keyPlaceholder="Header名"
-          valuePlaceholder="Header值"
+          keyPlaceholder={t('interface.paramName')}
+          valuePlaceholder={t('interface.paramValue')}
         />
       ),
     },
     {
       key: 'body',
-      label: '请求体',
+      label: t('interface.body'),
       children: (
         <BodyEditor
           bodyType={bodyType}
@@ -160,7 +163,7 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
   if (!requestId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300, color: '#999' }}>
-        请从左侧集合树选择一个请求
+        {t('interface.selectFromLeft')}
       </div>
     );
   }
@@ -171,7 +174,7 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
 
   return (
     <div>
-      {/* 请求行 */}
+      {/* Request line */}
       <Space.Compact style={{ width: '100%', marginBottom: 8 }}>
         <Select
           value={method}
@@ -189,14 +192,14 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="请求 URL（支持 ${environment_variable}）"
+          placeholder={t('interface.url')}
           style={{ fontFamily: 'monospace', fontSize: 13 }}
         />
         <Button type="primary" icon={<SendOutlined />} onClick={handleSend} loading={sending}>
-          发送
+          {t('interface.send')}
         </Button>
         <Button icon={<SaveOutlined />} onClick={handleSave}>
-          保存
+          {t('interface.save')}
         </Button>
         <Button
           type="text"
@@ -206,13 +209,13 @@ export default function RequestEditor({ requestId, environmentId, projectId, onS
       </Space.Compact>
 
       <div style={{ marginBottom: 4, fontSize: 12, color: '#999' }}>
-        {request?.name && <span>当前请求: {request.name}</span>}
+        {request?.name && <span>{t('interface.currentRequest')}: {request.name}</span>}
       </div>
 
-      {/* Tab 页：Params / Headers / Body */}
+      {/* Tabs: Params / Headers / Body */}
       <Tabs items={tabItems} size="small" />
 
-      {/* 响应区域 */}
+      {/* Response area */}
       {response && (
         <ResponseViewer
           statusCode={response.status_code}

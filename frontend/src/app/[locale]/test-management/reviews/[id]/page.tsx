@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Button, Card, Descriptions, Tag, Table, message, Spin, Space, Progress, List, Input, Divider,
 } from 'antd';
@@ -9,21 +10,22 @@ import { ArrowLeftOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { getReview, getCases, submitReview } from '@/lib/api/test-management';
 import type { TestCaseListItem } from '@/lib/api/test-management';
 
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  draft: { color: 'default', label: '草稿' },
-  in_progress: { color: 'processing', label: '进行中' },
-  completed: { color: 'success', label: '已完成' },
-};
-
-const PRIORITY_MAP: Record<string, { color: string; label: string }> = {
-  HIGH: { color: 'red', label: '高' },
-  MEDIUM: { color: 'orange', label: '中' },
-  LOW: { color: 'blue', label: '低' },
-};
-
 export default function ReviewDetailPage() {
+  const t = useTranslations();
   const params = useParams();
   const router = useRouter();
+
+  const STATUS_MAP = useMemo(() => ({
+    draft: { color: 'default', label: t('testManagement.case.draft') },
+    in_progress: { color: 'processing', label: t('common.running') },
+    completed: { color: 'success', label: t('common.completed') },
+  }), [t]);
+
+  const PRIORITY_MAP = useMemo(() => ({
+    HIGH: { color: 'red', label: t('testManagement.case.high') },
+    MEDIUM: { color: 'orange', label: t('testManagement.case.medium') },
+    LOW: { color: 'blue', label: t('testManagement.case.low') },
+  }), [t]);
   const reviewId = Number(params.id);
   const [review, setReview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ export default function ReviewDetailPage() {
   const loadReview = () => {
     setLoading(true);
     getReview(reviewId).then((res) => setReview(res.data)).catch(() => {
-      message.error('加载失败');
+      message.error(t('common.loadFailed'));
       router.back();
     }).finally(() => setLoading(false));
   };
@@ -44,10 +46,10 @@ export default function ReviewDetailPage() {
     setSubmitting(true);
     try {
       await submitReview(reviewId, { comment: commentText });
-      message.success('评审已提交');
+      message.success(t('common.success'));
       setCommentText('');
       loadReview();
-    } catch { message.error('提交失败'); }
+    } catch { message.error(t('common.operationFailed')); }
     finally { setSubmitting(false); }
   };
 
@@ -57,27 +59,27 @@ export default function ReviewDetailPage() {
   return (
     <div>
       <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => router.back()} style={{ padding: 0, marginBottom: 16 }}>
-        返回评审列表
+        {t('common.back')}
       </Button>
 
       <Card title={review.title}>
         <Descriptions column={4} size="small">
-          <Descriptions.Item label="状态">
-            <Tag color={STATUS_MAP[review.status]?.color}>{STATUS_MAP[review.status]?.label || review.status}</Tag>
+          <Descriptions.Item label={t('testManagement.case.status')}>
+            <Tag color={STATUS_MAP[review.status as keyof typeof STATUS_MAP]?.color}>{STATUS_MAP[review.status as keyof typeof STATUS_MAP]?.label || review.status}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="优先级">
-            <Tag color={PRIORITY_MAP[review.priority]?.color}>{PRIORITY_MAP[review.priority]?.label || review.priority}</Tag>
+          <Descriptions.Item label={t('testManagement.case.priority')}>
+            <Tag color={PRIORITY_MAP[review.priority as keyof typeof PRIORITY_MAP]?.color}>{PRIORITY_MAP[review.priority as keyof typeof PRIORITY_MAP]?.label || review.priority}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="截止日期">{review.deadline || '-'}</Descriptions.Item>
-          <Descriptions.Item label="用例数">{review.case_count || 0}</Descriptions.Item>
+          <Descriptions.Item label={t('common.updatedAt')}>{review.deadline || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('testManagement.caseCount')}>{review.case_count || 0}</Descriptions.Item>
         </Descriptions>
 
         {review.description && <p style={{ color: '#666', marginTop: 8 }}>{review.description}</p>}
 
-        {/* 评审进度 */}
+        {/* Review progress */}
         {review.progress && (
           <div style={{ margin: '16px 0' }}>
-            <strong>评审进度：</strong>
+            <strong>{t('common.progress')}：</strong>
             <Progress
               percent={review.progress.total > 0
                 ? Math.round((review.progress.completed / review.progress.total) * 100) : 0}
@@ -87,49 +89,49 @@ export default function ReviewDetailPage() {
           </div>
         )}
 
-        {/* 评审分配 */}
-        <Divider orientation="left">评审人</Divider>
+        {/* Review assignments */}
+        <Divider orientation="left">{t('testManagement.review.title')}</Divider>
         <List
           dataSource={review.assignments || []}
-          locale={{ emptyText: '暂无评审人' }}
+          locale={{ emptyText: t('common.noData') }}
           renderItem={(item: any) => (
             <List.Item>
               <List.Item.Meta
-                title={`评审人 #${item.reviewer_id}`}
-                description={item.comment || '尚未提交意见'}
+                title={`Reviewer #${item.reviewer_id}`}
+                description={item.comment || t('testManagement.review.noComment')}
               />
               <Tag color={item.status === 'completed' ? 'success' : 'processing'}>
-                {item.status === 'completed' ? '已完成' : '待评审'}
+                {item.status === 'completed' ? t('common.completed') : t('testManagement.case.pendingReview')}
               </Tag>
             </List.Item>
           )}
         />
 
-        {/* 评审用例 */}
-        <Divider orientation="left">评审用例</Divider>
+        {/* Review cases */}
+        <Divider orientation="left">{t('testManagement.cases')}</Divider>
         <Table
           rowKey="id" dataSource={review.cases || []} pagination={false} size="small"
-          locale={{ emptyText: '暂无用例' }}
+          locale={{ emptyText: t('common.noData') }}
           columns={[
-            { title: '标题', dataIndex: 'title', ellipsis: true },
-            { title: '优先级', dataIndex: 'priority', width: 80,
-              render: (v: string) => <Tag color={PRIORITY_MAP[v]?.color}>{PRIORITY_MAP[v]?.label || v}</Tag>,
+            { title: t('testManagement.case.titleLabel'), dataIndex: 'title', ellipsis: true },
+            { title: t('testManagement.case.priority'), dataIndex: 'priority', width: 80,
+              render: (v: string) => <Tag color={PRIORITY_MAP[v as keyof typeof PRIORITY_MAP]?.color}>{PRIORITY_MAP[v as keyof typeof PRIORITY_MAP]?.label || v}</Tag>,
             },
-            { title: '状态', dataIndex: 'status', width: 80,
-              render: (v: string) => STATUS_MAP[v]?.label || v,
+            { title: t('testManagement.case.status'), dataIndex: 'status', width: 80,
+              render: (v: string) => STATUS_MAP[v as keyof typeof STATUS_MAP]?.label || v,
             },
           ]}
         />
 
-        {/* 提交评审意见（仅当前用户是被分配评审人且未完成时显示） */}
+        {/* Submit review (only visible when current user is assigned reviewer and not completed) */}
         {review.status !== 'completed' && (
           <>
-            <Divider orientation="left">提交评审意见</Divider>
+            <Divider orientation="left">{t('testManagement.review.edit')}</Divider>
             <Space style={{ width: '100%', alignItems: 'flex-start' }}>
               <Input.TextArea
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="请输入评审意见..."
+                placeholder={t('common.inputPlaceholder')}
                 rows={3}
                 style={{ flex: 1 }}
               />
@@ -137,7 +139,7 @@ export default function ReviewDetailPage() {
                 loading={submitting} onClick={handleSubmit}
                 disabled={!commentText.trim()}
               >
-                提交评审
+                {t('common.submit')}
               </Button>
             </Space>
           </>

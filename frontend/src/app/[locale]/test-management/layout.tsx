@@ -2,12 +2,14 @@
 
 import { ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Tabs } from 'antd';
 import { TagsOutlined, FileTextOutlined, AppstoreOutlined, TeamOutlined, PlayCircleOutlined, BarChartOutlined, SnippetsOutlined, FileProtectOutlined } from '@ant-design/icons';
 
 export default function TestManagementLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations();
 
   const locale = pathname.split('/')[1];
   const basePath = `/${locale}/test-management`;
@@ -32,14 +34,14 @@ export default function TestManagementLayout({ children }: { children: ReactNode
         onChange={(key) => router.push(`${basePath}/${key}`)}
         style={{ marginBottom: 16 }}
         items={[
-          { key: 'cases', label: <><FileTextOutlined /> 测试用例</> },
-          { key: 'suites', label: <><AppstoreOutlined /> 测试套件</> },
-          { key: 'versions', label: <><TagsOutlined /> 版本管理</> },
-          { key: 'reviews', label: <><TeamOutlined /> 评审管理</> },
-          { key: 'review-templates', label: <><SnippetsOutlined /> 评审模板</> },
-          { key: 'executions', label: <><PlayCircleOutlined /> 执行管理</> },
-          { key: 'report-templates', label: <><FileProtectOutlined /> 报告模板</> },
-          { key: 'reports', label: <><BarChartOutlined /> 测试报告</> },
+          { key: 'cases', label: <><FileTextOutlined /> {t('testManagement.cases')}</> },
+          { key: 'suites', label: <><AppstoreOutlined /> {t('testManagement.suites')}</> },
+          { key: 'versions', label: <><TagsOutlined /> {t('testManagement.versions')}</> },
+          { key: 'reviews', label: <><TeamOutlined /> {t('testManagement.reviews')}</> },
+          { key: 'review-templates', label: <><SnippetsOutlined /> {t('testManagement.reviewTemplates')}</> },
+          { key: 'executions', label: <><PlayCircleOutlined /> {t('testManagement.executions')}</> },
+          { key: 'report-templates', label: <><FileProtectOutlined /> {t('testManagement.reportTemplates')}</> },
+          { key: 'reports', label: <><BarChartOutlined /> {t('testManagement.reports')}</> },
         ]}
       />
       {children}

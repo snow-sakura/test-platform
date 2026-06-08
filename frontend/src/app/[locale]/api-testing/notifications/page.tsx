@@ -5,6 +5,7 @@ import {
   Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Tabs, message,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import type { ColumnsType } from 'antd/es/table';
 import {
   getNotifications, createNotification, updateNotification,
@@ -12,8 +13,10 @@ import {
 } from '@/lib/api/api-testing';
 import type { ApiNotificationConfig, ApiNotificationLog } from '@/lib/api/api-testing';
 
-/** 通知管理页面 */
+/** Notification management page */
 export default function NotificationsPage() {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [notifies, setNotifies] = useState<ApiNotificationConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,7 +56,7 @@ export default function NotificationsPage() {
       } else {
         await createNotification(values);
       }
-      message.success('保存成功');
+      message.success(t('notification.saveSuccess'));
       setModalOpen(false);
       fetchNotifies();
     } catch (err: any) {
@@ -64,45 +67,45 @@ export default function NotificationsPage() {
   const handleTest = async (id: number) => {
     try {
       const res = await testNotification(id);
-      message.success(res.data?.message || '发送成功');
+      message.success(res.data?.message || t('notification.testSuccess'));
       fetchLogs();
     } catch {
-      message.error('测试发送失败');
+      message.error(t('notification.testFailed'));
     }
   };
 
   const notifyColumns: ColumnsType<ApiNotificationConfig> = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: tc('name'), dataIndex: 'name', key: 'name' },
     {
-      title: '类型', dataIndex: 'notify_type', key: 'notify_type', width: 120,
+      title: tc('type'), dataIndex: 'notify_type', key: 'notify_type', width: 120,
       render: (v: string) => {
-        const labels: Record<string, string> = { feishu: '飞书', wechat: '企业微信', dingtalk: '钉钉' };
+        const labels: Record<string, string> = { feishu: t('notification.feishu'), wechat: t('notification.wechat'), dingtalk: t('notification.dingtalk') };
         return <Tag>{labels[v] || v}</Tag>;
       },
     },
     {
-      title: '状态', dataIndex: 'is_active', key: 'is_active', width: 80,
-      render: (v: boolean) => <Tag color={v ? 'success' : 'default'}>{v ? '启用' : '禁用'}</Tag>,
+      title: tc('status'), dataIndex: 'is_active', key: 'is_active', width: 80,
+      render: (v: boolean) => <Tag color={v ? 'success' : 'default'}>{v ? t('notification.enabled') : t('notification.disabled')}</Tag>,
     },
-    { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
+    { title: tc('createdAt'), dataIndex: 'created_at', key: 'created_at', width: 180 },
     {
-      title: '操作', key: 'actions', width: 200,
+      title: tc('action'), key: 'actions', width: 200,
       render: (_, record) => (
         <Space>
           <Button type="link" size="small" icon={<SendOutlined />} onClick={() => handleTest(record.id)}>
-            测试
+            {t('notification.test')}
           </Button>
           <Button type="link" size="small" onClick={() => {
             setEditRecord(record);
             form.setFieldsValue(record);
             setModalOpen(true);
-          }}>编辑</Button>
-          <Popconfirm title="确定删除？" onConfirm={async () => {
+          }}>{tc('edit')}</Button>
+          <Popconfirm title={t('notification.deleteConfirm')} onConfirm={async () => {
             await deleteNotification(record.id);
-            message.success('已删除');
+            message.success(t('notification.deleted'));
             fetchNotifies();
           }}>
-            <Button type="link" danger size="small">删除</Button>
+            <Button type="link" danger size="small">{tc('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -110,21 +113,21 @@ export default function NotificationsPage() {
   ];
 
   const logColumns: ColumnsType<ApiNotificationLog> = [
-    { title: '事件类型', dataIndex: 'event_type', key: 'event_type', width: 120 },
+    { title: tc('type'), dataIndex: 'event_type', key: 'event_type', width: 120 },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 100,
+      title: tc('status'), dataIndex: 'status', key: 'status', width: 100,
       render: (v: string) => (
-        <Tag color={v === 'success' ? 'success' : 'error'}>{v === 'success' ? '成功' : '失败'}</Tag>
+        <Tag color={v === 'success' ? 'success' : 'error'}>{v === 'success' ? t('notification.success') : t('notification.failed')}</Tag>
       ),
     },
-    { title: '消息', dataIndex: 'message', key: 'message', ellipsis: true },
-    { title: '发送时间', dataIndex: 'sent_at', key: 'sent_at', width: 180 },
+    { title: tc('description'), dataIndex: 'message', key: 'message', ellipsis: true },
+    { title: tc('createdAt'), dataIndex: 'sent_at', key: 'sent_at', width: 180 },
   ];
 
   const notifyTypeOptions = [
-    { value: 'feishu', label: '飞书机器人' },
-    { value: 'wechat', label: '企业微信机器人' },
-    { value: 'dingtalk', label: '钉钉机器人' },
+    { value: 'feishu', label: t('notification.feishu') },
+    { value: 'wechat', label: t('notification.wechat') },
+    { value: 'dingtalk', label: t('notification.dingtalk') },
   ];
 
   return (
@@ -133,7 +136,7 @@ export default function NotificationsPage() {
         items={[
           {
             key: 'config',
-            label: '通知配置',
+            label: t('notification.title'),
             children: (
               <div>
                 <div style={{ marginBottom: 16 }}>
@@ -142,7 +145,7 @@ export default function NotificationsPage() {
                     form.resetFields();
                     setModalOpen(true);
                   }}>
-                    新建通知配置
+                    {t('notification.create')}
                   </Button>
                 </div>
                 <Table rowKey="id" columns={notifyColumns} dataSource={notifies} loading={loading} pagination={false} />
@@ -151,7 +154,7 @@ export default function NotificationsPage() {
           },
           {
             key: 'logs',
-            label: '发送日志',
+            label: t('notification.logs'),
             children: (
               <Table
                 rowKey="id"
@@ -172,24 +175,24 @@ export default function NotificationsPage() {
       />
 
       <Modal
-        title={editRecord ? '编辑通知配置' : '新建通知配置'}
+        title={editRecord ? t('notification.edit') : t('notification.create')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         width={550}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="配置名称" rules={[{ required: true }]}>
-            <Input placeholder="如：测试团队飞书群" />
+          <Form.Item name="name" label={t('notification.name')} rules={[{ required: true }]}>
+            <Input placeholder={tc('inputPlaceholder')} />
           </Form.Item>
-          <Form.Item name="notify_type" label="通知类型" rules={[{ required: true }]}>
+          <Form.Item name="notify_type" label={tc('type')} rules={[{ required: true }]}>
             <Select options={notifyTypeOptions} />
           </Form.Item>
-          <Form.Item name="webhook_url" label="Webhook 地址" rules={[{ required: true }]}>
+          <Form.Item name="webhook_url" label="Webhook URL" rules={[{ required: true }]}>
             <Input placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx" />
           </Form.Item>
-          <Form.Item name="secret" label="签名密钥">
-            <Input placeholder="可选" />
+          <Form.Item name="secret" label={t('notification.signKey')}>
+            <Input placeholder={tc('selectPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>

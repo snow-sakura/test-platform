@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, message, Card, Space, Tag, Row, Col, Statistic,
@@ -13,16 +14,18 @@ import { getApiProjects } from '@/lib/api/api-testing';
 import type { PerformanceScene } from '@/lib/api/performance';
 import type { ApiProject } from '@/lib/api/api-testing';
 
-const SCENE_TYPES = [
-  { label: 'HTTP 压测 (httpx)', value: 'httpx' },
-  { label: 'JMeter 压测', value: 'jmeter' },
-];
+const SCENE_TYPE_VALUES = ['httpx', 'jmeter'] as const;
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'default', ready: 'blue', archived: 'warning',
 };
 
 export default function PerformanceScenesPage() {
+  const t = useTranslations();
+  const SCENE_TYPES = [
+    { label: t('performance.scene.http'), value: 'httpx' },
+    { label: t('performance.scene.jmeter'), value: 'jmeter' },
+  ];
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [scenes, setScenes] = useState<PerformanceScene[]>([]);
@@ -33,7 +36,7 @@ export default function PerformanceScenesPage() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn(t('performance.scene.loadProjectsFailed'), e));
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -43,7 +46,7 @@ export default function PerformanceScenesPage() {
       const res = await getScenes({ project_id: projectId, page, page_size: 20 });
       setScenes(res.data.results || []);
       setTotal(res.data.count);
-    } catch { message.error('加载场景列表失败'); }
+    } catch { message.error(t('performance.scene.loadScenesFailed')); }
     finally { setLoading(false); }
   }, [projectId, page]);
 
@@ -58,28 +61,28 @@ export default function PerformanceScenesPage() {
         scenario_type: values.scenario_type || 'httpx',
         config: values.config ? JSON.parse(values.config) : {},
       });
-      message.success('场景创建成功');
+      message.success(t('performance.scene.createSuccess'));
       setCreateOpen(false);
       form.resetFields();
       setPage(1);
       fetchData();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error('创建场景失败');
+      message.error(t('performance.scene.createFailed'));
     }
   };
 
   const handleDelete = (id: number, name: string) => {
     Modal.confirm({
-      title: '确认删除',
-      content: `场景: ${name}`,
-      okText: '确定', cancelText: '取消', okType: 'danger',
+      title: t('performance.scene.deleteConfirm'),
+      content: t('performance.scene.deleteContent', { name }),
+      okText: t('common.confirm'), cancelText: t('common.cancel'), okType: 'danger',
       onOk: async () => {
         try {
           await deleteScene(id);
-          message.success('场景已删除');
+          message.success(t('performance.scene.deleted'));
           fetchData();
-        } catch { message.error('删除失败'); }
+        } catch { message.error(t('performance.scene.deleteFailed')); }
       },
     });
   };
@@ -87,30 +90,30 @@ export default function PerformanceScenesPage() {
   const handleExecute = async (id: number) => {
     try {
       const res = await executeScene(id);
-      message.success('执行已触发');
-    } catch { message.error('执行失败'); }
+      message.success(t('performance.scene.executionTriggered'));
+    } catch { message.error(t('performance.scene.executeFailed')); }
   };
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-    { title: '场景名称', dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: t('performance.scene.name'), dataIndex: 'name', key: 'name', ellipsis: true },
     {
-      title: '类型', dataIndex: 'scenario_type', key: 'scenario_type', width: 130,
-      render: (v: string) => <Tag>{v === 'jmeter' ? 'JMeter' : 'HTTP (httpx)'}</Tag>,
+      title: t('performance.scene.type'), dataIndex: 'scenario_type', key: 'scenario_type', width: 130,
+      render: (v: string) => <Tag>{v === 'jmeter' ? t('performance.scene.jmeter') : t('performance.scene.http')}</Tag>,
     },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 100,
+      title: t('performance.scene.status'), dataIndex: 'status', key: 'status', width: 100,
       render: (v: string) => <Tag color={STATUS_COLORS[v] || 'default'}>{v}</Tag>,
     },
-    { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 180 },
+    { title: t('performance.scene.updatedAt'), dataIndex: 'updated_at', key: 'updated_at', width: 180 },
     {
-      title: '操作', key: 'action', width: 160,
+      title: t('common.action'), key: 'action', width: 160,
       render: (_: any, record: PerformanceScene) => (
         <Space>
           <Button type="link" size="small" icon={<PlayCircleOutlined />}
-            onClick={() => handleExecute(record.id)}>执行</Button>
+            onClick={() => handleExecute(record.id)}>{t('performance.scene.execute')}</Button>
           <Button type="link" danger size="small" icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id, record.name)}>删除</Button>
+            onClick={() => handleDelete(record.id, record.name)}>{t('performance.scene.delete')}</Button>
         </Space>
       ),
     },
@@ -118,10 +121,10 @@ export default function PerformanceScenesPage() {
 
   return (
     <div>
-      {/* 项目选择 */}
+      {/* project selector */}
       <div style={{ marginBottom: 16 }}>
         <Select
-          placeholder="请选择项目"
+          placeholder={t('performance.scene.selectProject')}
           style={{ width: 300 }}
           value={projectId}
           onChange={(v) => { setProjectId(v); setPage(1); }}
@@ -131,30 +134,30 @@ export default function PerformanceScenesPage() {
       </div>
 
       <Card
-        size="small" title="压测场景"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} disabled={!projectId}>新建场景</Button>}
+        size="small" title={t('performance.scene.title')}
+        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} disabled={!projectId}>{t('performance.scene.create')}</Button>}
       >
         <Table
           dataSource={scenes} columns={columns} rowKey="id" loading={loading}
-          pagination={{ current: page, total, pageSize: 20, onChange: setPage, showTotal: (t) => `共 ${t} 条` }}
+          pagination={{ current: page, total, pageSize: 20, onChange: setPage, showTotal: (total) => t('common.totalCount', { count: total }) }}
           size="small"
         />
       </Card>
 
-      <Modal title="新建压测场景" open={createOpen} onOk={handleCreate}
-        onCancel={() => { setCreateOpen(false); form.resetFields(); }} okText="确定" cancelText="取消">
+      <Modal title={t('performance.scene.edit')} open={createOpen} onOk={handleCreate}
+        onCancel={() => { setCreateOpen(false); form.resetFields(); }} okText={t('common.confirm')} cancelText={t('common.cancel')}>
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="场景名称" rules={[{ required: true, message: '请输入场景名称' }]}>
-            <Input placeholder="例如: 登录接口压测" />
+          <Form.Item name="name" label={t('performance.scene.name')} rules={[{ required: true, message: t('performance.scene.nameRequired') }]}>
+            <Input placeholder={t('performance.scene.namePlaceholder')} />
           </Form.Item>
-          <Form.Item name="scenario_type" label="压测类型" initialValue="httpx">
+          <Form.Item name="scenario_type" label={t('performance.scene.type')} initialValue="httpx">
             <Select options={SCENE_TYPES} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={2} placeholder="压测描述" />
+          <Form.Item name="description" label={t('performance.scene.description')}>
+            <Input.TextArea rows={2} placeholder={t('performance.scene.descriptionPlaceholder')} />
           </Form.Item>
-          <Form.Item name="config" label="配置 (JSON)" extra='{"url":"http://...","method":"GET","concurrent_users":10,"duration_seconds":30}'>
-            <Input.TextArea rows={4} placeholder='输入 JSON 配置...' />
+          <Form.Item name="config" label={t('performance.scene.config')} extra='{"url":"http://...","method":"GET","concurrent_users":10,"duration_seconds":30}'>
+            <Input.TextArea rows={4} placeholder={t('performance.scene.configPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>

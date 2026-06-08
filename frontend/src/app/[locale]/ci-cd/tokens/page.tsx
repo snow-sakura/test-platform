@@ -28,7 +28,7 @@ export default function CiCdTokensPage() {
       const res = await getApiTokens();
       setTokens(res.data);
     } catch {
-      message.error('加载 Token 列表失败');
+      message.error(t('ciCd.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ export default function CiCdTokensPage() {
       fetchData();
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error('创建 Token 失败');
+      message.error(t('ciCd.createTokenFailed'));
     }
   };
 
@@ -58,13 +58,13 @@ export default function CiCdTokensPage() {
     Modal.confirm({
       title: t('ciCd.deleteConfirm'),
       content: `Token: ${name}`,
-      okText: '确定', cancelText: '取消', okType: 'danger',
+      okText: t('ciCd.confirm'), cancelText: t('ciCd.cancel'), okType: 'danger',
       onOk: async () => {
         try {
           await deleteApiToken(id);
           message.success(t('ciCd.tokenDeleted'));
           fetchData();
-        } catch { message.error('删除失败'); }
+        } catch { message.error(t('ciCd.deleteFailed')); }
       },
     });
   };
@@ -103,14 +103,14 @@ export default function CiCdTokensPage() {
         title={t('ciCd.createToken')} open={createOpen}
         onOk={handleCreate}
         onCancel={() => { setCreateOpen(false); form.resetFields(); }}
-        okText="确定" cancelText="取消"
+        okText={t('ciCd.confirm')} cancelText={t('ciCd.cancel')}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={t('ciCd.tokenName')} rules={[{ required: true, message: '请输入 Token 名称' }]}>
-            <Input placeholder="例如: GitLab CI Token" />
+          <Form.Item name="name" label={t('ciCd.tokenName')} rules={[{ required: true, message: t('ciCd.tokenNameRequired') }]}>
+            <Input placeholder={t('ciCd.tokenName')} />
           </Form.Item>
           <Form.Item name="expires_in_days" label={t('ciCd.expiresIn')}>
-            <InputNumber min={1} max={3650} placeholder={t('ciCd.neverExpires')} style={{ width: '100%' }} addonAfter="天" />
+            <InputNumber min={1} max={3650} placeholder={t('ciCd.neverExpires')} style={{ width: '100%' }} addonAfter={t('ciCd.days')} />
           </Form.Item>
         </Form>
       </Modal>

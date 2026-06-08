@@ -79,8 +79,8 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
       setModalOpen(false);
       fetchData();
     } catch (err: any) {
-      if (err?.errorFields) return; // 表单验证失败
-      message.error('操作失败');
+      if (err?.errorFields) return;
+      message.error(t('common.operationFailed'));
     }
   };
 
@@ -97,24 +97,23 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
   const handleVerify = async (record: TestPoint) => {
     try {
       await updateTestPoint(record.id, { is_verified: true });
-      message.success('已确认');
+      message.success(t('project.confirmed'));
       fetchData();
     } catch {
-      message.error('确认失败');
+      message.error(t('common.operationFailed'));
     }
   };
 
   const handleExtract = async () => {
     if (!documentIds || documentIds.length === 0) {
-      message.warning('请先在文档管理页面上传文档');
+      message.warning(t('project.uploadDocFirst'));
       return;
     }
     setGenerateLoading(true);
     try {
       const res = await extractTestPoints(projectId, documentIds);
-      message.success(`提取任务已提交（批次 ID: ${res.data.batch_id}）`);
+      message.success(`${t('project.extractTaskSubmitted')}（批次 ID: ${res.data.batch_id}）`);
     } catch {
-      // 错误已由拦截器处理
     } finally {
       setGenerateLoading(false);
     }
@@ -122,7 +121,7 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
 
   const columns: ColumnsType<TestPoint> = [
     {
-      title: t('common.detail'),
+      title: t('project.title'),
       dataIndex: 'title',
       key: 'title',
       ellipsis: true,
@@ -135,7 +134,7 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
       render: (v: string | null) => v || '-',
     },
     {
-      title: '优先级',
+      title: t('common.priority'),
       dataIndex: 'priority',
       key: 'priority',
       width: 100,
@@ -144,20 +143,20 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
       ),
     },
     {
-      title: '分类',
+      title: t('project.category'),
       dataIndex: 'category',
       key: 'category',
       width: 120,
       render: (c: string | null) => c ? <Tag color={categoryColors[c] || 'default'}>{c}</Tag> : '-',
     },
     {
-      title: '状态',
+      title: t('common.status'),
       dataIndex: 'is_verified',
       key: 'is_verified',
       width: 100,
       render: (v: boolean) => v
-        ? <Tag color="success">已确认</Tag>
-        : <Tag color="warning">待确认</Tag>,
+        ? <Tag color="success">{t('project.confirmed')}</Tag>
+        : <Tag color="warning">{t('project.pendingConfirm')}</Tag>,
     },
     {
       title: t('common.action'),
@@ -170,7 +169,7 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
           </Button>
           {!record.is_verified && (
             <Button type="link" size="small" icon={<CheckCircleOutlined />} onClick={() => handleVerify(record)}>
-              确认
+              {t('project.confirmAction')}
             </Button>
           )}
           <Popconfirm title={t('common.confirmDelete')} onConfirm={() => handleDelete(record.id)}>
@@ -193,7 +192,7 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
             onClick={handleExtract}
             loading={generateLoading}
           >
-            AI 提取测试点
+            {t('project.aiExtractTestPoints')}
           </Button>
         </Space>
       </div>
@@ -214,32 +213,32 @@ export default function TestPoints({ projectId, documentIds, onSelectionChange }
       />
 
       <Modal
-        title={editRecord ? '编辑测试点' : '新建测试点'}
+        title={editRecord ? t('project.editTestPoint') : t('project.newTestPoint')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+          <Form.Item name="title" label={t('project.title')} rules={[{ required: true, message: t('project.titleRequired') }]}>
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={t('project.description')}>
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item name="priority" label="优先级" initialValue="MEDIUM">
+          <Form.Item name="priority" label={t('common.priority')} initialValue="MEDIUM">
             <Select>
               <Select.Option value="HIGH">HIGH</Select.Option>
               <Select.Option value="MEDIUM">MEDIUM</Select.Option>
               <Select.Option value="LOW">LOW</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="category" label="分类">
+          <Form.Item name="category" label={t('project.category')}>
             <Select allowClear>
-              <Select.Option value="功能">功能</Select.Option>
+              <Select.Option value="功能">{t('testManagement.case.functional')}</Select.Option>
               <Select.Option value="UI">UI</Select.Option>
-              <Select.Option value="性能">性能</Select.Option>
-              <Select.Option value="安全">安全</Select.Option>
-              <Select.Option value="兼容性">兼容性</Select.Option>
+              <Select.Option value="性能">{t('testManagement.case.performance')}</Select.Option>
+              <Select.Option value="安全">{t('testManagement.case.security')}</Select.Option>
+              <Select.Option value="兼容性">{t('testManagement.case.compatibility')}</Select.Option>
             </Select>
           </Form.Item>
         </Form>

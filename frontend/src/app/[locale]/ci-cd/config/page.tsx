@@ -39,7 +39,7 @@ export default function CiCdConfigPage() {
       setTemplate(res.data);
     } catch (err: any) {
       if (err?.errorFields) return;
-      message.error('生成配置失败');
+      message.error(t('ciCd.configGenerationFailed'));
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export default function CiCdConfigPage() {
 
   return (
     <div>
-      <Card size="small" title="CI 配置模板生成">
+      <Card size="small" title={t('ciCd.configTemplate')}>
         <Tabs activeKey={ciType} onChange={setCiType} items={CI_TABS} style={{ marginBottom: 16 }} />
 
         <Form
@@ -62,7 +62,7 @@ export default function CiCdConfigPage() {
           <Form.Item name="platform_url" label={t('ciCd.platformUrl')} rules={[{ required: true }]}>
             <Input placeholder="http://localhost:8000" />
           </Form.Item>
-          <Form.Item name="token_name" label="Token 环境变量名" rules={[{ required: true }]}>
+          <Form.Item name="token_name" label={t('ciCd.tokenEnvName')} rules={[{ required: true }]}>
             <Input placeholder="TESTPLATE_TOKEN" />
           </Form.Item>
           <Form.Item name="branch" label={t('ciCd.branch')} rules={[{ required: true }]}>
@@ -74,17 +74,17 @@ export default function CiCdConfigPage() {
               <div>
                 {fields.map(({ key, name, ...rest }, index) => (
                   <Space key={key} align="baseline" style={{ display: 'flex', marginBottom: 8 }}>
-                    <Form.Item {...rest} name={[name, 'module_type']} rules={[{ required: true, message: '请选择模块' }]}>
-                      <Select style={{ width: 140 }} options={MODULE_TYPE_OPTIONS} placeholder="模块类型" />
+                    <Form.Item {...rest} name={[name, 'module_type']} rules={[{ required: true, message: t('ciCd.selectTestModule') }]}>
+                      <Select style={{ width: 140 }} options={MODULE_TYPE_OPTIONS} placeholder={t('ciCd.selectModule')} />
                     </Form.Item>
-                    <Form.Item {...rest} name={[name, 'suite_id']} rules={[{ required: true, message: '请输入 ID' }]}>
-                      <InputNumber style={{ width: 120 }} placeholder="套件/计划 ID" min={1} />
+                    <Form.Item {...rest} name={[name, 'suite_id']} rules={[{ required: true, message: t('ciCd.enterId') }]}>
+                      <InputNumber style={{ width: 120 }} placeholder={t('ciCd.suitePlanId')} min={1} />
                     </Form.Item>
-                    <Button type="link" danger onClick={() => remove(name)}>删除</Button>
+                    <Button type="link" danger onClick={() => remove(name)}>{t('common.delete')}</Button>
                   </Space>
                 ))}
                 <Button type="dashed" onClick={() => add({ module_type: 'api_testing' })} style={{ marginBottom: 16 }}>
-                  + 添加模块
+                  + {t('ciCd.addModule')}
                 </Button>
               </div>
             )}

@@ -17,9 +17,9 @@ const statusColors: Record<string, string> = {
   FAILED: 'error',
 };
 
-const taskTypeLabels: Record<string, string> = {
-  extract_test_points: '提取测试点',
-  generate_test_cases: '生成测试用例',
+const taskTypeKeys: Record<string, string> = {
+  extract_test_points: 'project.extractTestPoints',
+  generate_test_cases: 'project.generateTestCases',
 };
 
 interface Props {
@@ -51,13 +51,13 @@ export default function BatchTracker({ projectId }: Props) {
         if (prevStatus && prevStatus !== batch.status) {
           if (batch.status === 'COMPLETED') {
             notification.success({
-              message: '任务完成',
-              description: `${taskTypeLabels[batch.task_type] || batch.task_type} 已完成`,
+              message: t('project.taskCompleted'),
+              description: t('project.taskCompletedDesc', { type: t(taskTypeKeys[batch.task_type]) || batch.task_type }),
             });
           } else if (batch.status === 'FAILED') {
             notification.error({
-              message: '任务失败',
-              description: batch.error_message || `${taskTypeLabels[batch.task_type] || batch.task_type} 执行失败`,
+              message: t('project.taskFailed'),
+              description: batch.error_message || t('project.taskFailedDesc', { type: t(taskTypeKeys[batch.task_type]) || batch.task_type }),
             });
           }
         }
@@ -86,7 +86,7 @@ export default function BatchTracker({ projectId }: Props) {
   const handleCancel = async (batch: TaskBatch) => {
     try {
       await cancelBatch(batch.id);
-      notification.success({ message: '任务已取消' });
+      notification.success({ message: t('project.taskCancelled') });
       fetchData();
     } catch {
       // 错误已由拦截器处理
@@ -100,16 +100,16 @@ export default function BatchTracker({ projectId }: Props) {
 
   const columns: ColumnsType<TaskBatch> = [
     {
-      title: '任务类型',
+      title: t('project.batchTaskType'),
       dataIndex: 'task_type',
       key: 'task_type',
       width: 150,
       render: (type: string) => (
-        <Tag>{taskTypeLabels[type] || type}</Tag>
+        <Tag>{t(taskTypeKeys[type]) || type}</Tag>
       ),
     },
     {
-      title: '状态',
+      title: t('project.batchStatus'),
       dataIndex: 'status',
       key: 'status',
       width: 120,
@@ -118,7 +118,7 @@ export default function BatchTracker({ projectId }: Props) {
       ),
     },
     {
-      title: '进度',
+      title: t('project.batchProgress'),
       key: 'progress',
       width: 200,
       render: (_, record) => (
@@ -130,20 +130,20 @@ export default function BatchTracker({ projectId }: Props) {
       ),
     },
     {
-      title: '完成数',
+      title: t('project.batchCompletedCount'),
       key: 'count',
       width: 120,
       render: (_, record) => `${record.completed_count} / ${record.total_count}`,
     },
     {
-      title: '开始时间',
+      title: t('project.batchStartTime'),
       dataIndex: 'started_at',
       key: 'started_at',
       width: 180,
       render: (v: string | null) => v || '-',
     },
     {
-      title: '完成时间',
+      title: t('project.batchEndTime'),
       dataIndex: 'completed_at',
       key: 'completed_at',
       width: 180,
@@ -160,7 +160,7 @@ export default function BatchTracker({ projectId }: Props) {
           </Button>
           {(record.status === 'PENDING' || record.status === 'RUNNING') && (
             <Button type="link" danger size="small" icon={<StopOutlined />} onClick={() => handleCancel(record)}>
-              取消
+              {t('common.cancel')}
             </Button>
           )}
         </Space>
@@ -172,7 +172,7 @@ export default function BatchTracker({ projectId }: Props) {
     <div>
       <div style={{ marginBottom: 16 }}>
         <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>
-          刷新
+          {t('common.refresh')}
         </Button>
       </div>
 
@@ -185,7 +185,7 @@ export default function BatchTracker({ projectId }: Props) {
       />
 
       <Modal
-        title="批次详情"
+        title={t('project.batchDetail')}
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={null}
@@ -193,14 +193,14 @@ export default function BatchTracker({ projectId }: Props) {
         {detailRecord && (
           <div>
             <p><strong>ID：</strong>{detailRecord.id}</p>
-            <p><strong>任务类型：</strong>{taskTypeLabels[detailRecord.task_type] || detailRecord.task_type}</p>
-            <p><strong>状态：</strong><Tag color={statusColors[detailRecord.status]}>{detailRecord.status}</Tag></p>
-            <p><strong>进度：</strong>{detailRecord.progress}%</p>
-            <p><strong>完成数/总数：</strong>{detailRecord.completed_count} / {detailRecord.total_count}</p>
-            <p><strong>开始时间：</strong>{detailRecord.started_at || '-'}</p>
-            <p><strong>完成时间：</strong>{detailRecord.completed_at || '-'}</p>
+            <p><strong>{t('project.batchTaskType')}：</strong>{t(taskTypeKeys[detailRecord.task_type]) || detailRecord.task_type}</p>
+            <p><strong>{t('project.batchStatus')}：</strong><Tag color={statusColors[detailRecord.status]}>{detailRecord.status}</Tag></p>
+            <p><strong>{t('project.batchProgress')}：</strong>{detailRecord.progress}%</p>
+            <p><strong>{t('project.batchCompletedCountTotal')}：</strong>{detailRecord.completed_count} / {detailRecord.total_count}</p>
+            <p><strong>{t('project.batchStartTime')}：</strong>{detailRecord.started_at || '-'}</p>
+            <p><strong>{t('project.batchEndTime')}：</strong>{detailRecord.completed_at || '-'}</p>
             {detailRecord.error_message && (
-              <p><strong>错误信息：</strong><span style={{ color: 'red' }}>{detailRecord.error_message}</span></p>
+              <p><strong>{t('project.batchError')}：</strong><span style={{ color: 'red' }}>{detailRecord.error_message}</span></p>
             )}
           </div>
         )}

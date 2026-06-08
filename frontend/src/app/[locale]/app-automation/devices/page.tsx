@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Table, Button, message, Modal, Form, Input, Select, Tag, Space, Card, Row, Col, Statistic } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, ScanOutlined, CameraOutlined, LockOutlined, UnlockOutlined, LinkOutlined, DisconnectOutlined } from '@ant-design/icons';
@@ -10,6 +11,7 @@ import {
 import type { Device, AppProject } from '@/lib/api/app-automation';
 
 export default function DevicesPage() {
+  const t = useTranslations();
   const [devices, setDevices] = useState<Device[]>([]);
   const [projects, setProjects] = useState<AppProject[]>([]);
   const [loading, setLoading] = useState(false);
@@ -24,13 +26,13 @@ export default function DevicesPage() {
     try {
       const res = await getDevices({ page_size: 1000 });
       setDevices(res.data.results || []);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setLoading(false); }
   };
 
   useEffect(() => {
     loadDevices();
-    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
+    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn(t('common.loadFailed'), e));
   }, []);
 
   const handleDiscover = async () => {
@@ -38,9 +40,9 @@ export default function DevicesPage() {
     try {
       const res = await discoverDevices();
       const newDevices = res.data || [];
-      message.success(`发现 ${newDevices.length} 台设备`);
+      message.success(`Discovered ${newDevices.length} device(s)`);
       loadDevices();
-    } catch { message.error('设备发现失败'); }
+    } catch { message.error(t('common.operationFailed')); }
     finally { setDiscovering(false); }
   };
 
@@ -49,91 +51,91 @@ export default function DevicesPage() {
     try {
       const res = await actionFn();
       if (res.data?.success !== false) {
-        message.success(`${actionLabel}成功`);
+        message.success(`${actionLabel} ${t('common.success')}`);
       } else {
-        message.error(`${actionLabel}失败: ${res.data?.error || '未知错误'}`);
+        message.error(`${actionLabel} ${t('common.failed')}: ${res.data?.error || t('common.unknown')}`);
       }
-    } catch { message.error(`${actionLabel}失败`); }
+    } catch { message.error(`${actionLabel} ${t('common.failed')}`); }
     finally { setActionLoading((prev) => ({ ...prev, [`${action}_${deviceId}`]: false })); }
   };
 
   const handleSubmit = async () => {
     const values = await form.validateFields();
     try {
-      if (editing) { await updateDevice(editing.id, values); message.success('更新成功'); }
-      else { await createDevice(values); message.success('创建成功'); }
+      if (editing) { await updateDevice(editing.id, values); message.success(t('common.updateSuccess')); }
+      else { await createDevice(values); message.success(t('common.createSuccess')); }
       setModalOpen(false); setEditing(null); form.resetFields(); loadDevices();
-    } catch { message.error('操作失败'); }
+    } catch { message.error(t('common.operationFailed')); }
   };
 
   const statusColors: Record<string, string> = { available: 'green', occupied: 'orange', disconnected: 'default' };
-  const statusLabels: Record<string, string> = { available: '可用', occupied: '占用中', disconnected: '未连接' };
+  const statusLabels: Record<string, string> = { available: 'Available', occupied: 'Occupied', disconnected: 'Disconnected' };
 
   return (
     <div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <Card size="small"><Statistic title="总设备" value={devices.length} /></Card>
+          <Card size="small"><Statistic title="Total" value={devices.length} /></Card>
         </Col>
         <Col span={6}>
-          <Card size="small"><Statistic title="可用" value={devices.filter((d) => d.status === 'available').length} valueStyle={{ color: '#52c41a' }} /></Card>
+          <Card size="small"><Statistic title="Available" value={devices.filter((d) => d.status === 'available').length} valueStyle={{ color: '#52c41a' }} /></Card>
         </Col>
         <Col span={6}>
-          <Card size="small"><Statistic title="占用" value={devices.filter((d) => d.status === 'occupied').length} valueStyle={{ color: '#faad14' }} /></Card>
+          <Card size="small"><Statistic title="Occupied" value={devices.filter((d) => d.status === 'occupied').length} valueStyle={{ color: '#faad14' }} /></Card>
         </Col>
         <Col span={6}>
-          <Card size="small"><Statistic title="离线" value={devices.filter((d) => d.status === 'disconnected').length} valueStyle={{ color: '#ff4d4f' }} /></Card>
+          <Card size="small"><Statistic title="Offline" value={devices.filter((d) => d.status === 'disconnected').length} valueStyle={{ color: '#ff4d4f' }} /></Card>
         </Col>
       </Row>
 
       <div style={{ marginBottom: 16 }}>
         <Space>
-          <Button type="primary" icon={<ScanOutlined />} loading={discovering} onClick={handleDiscover}>ADB 发现设备</Button>
-          <Button icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>手动添加</Button>
+          <Button type="primary" icon={<ScanOutlined />} loading={discovering} onClick={handleDiscover}>Discover</Button>
+          <Button icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>{t('common.create')}</Button>
         </Space>
       </div>
 
       <Table rowKey="id" loading={loading} dataSource={devices} size="small" pagination={false}
         columns={[
-          { title: '设备名称', dataIndex: 'name', width: 160 },
+          { title: t('common.name'), dataIndex: 'name', width: 160 },
           { title: 'ADB ID', dataIndex: 'device_id', width: 180, ellipsis: true },
-          { title: '平台', dataIndex: 'platform', width: 70, render: (v: string) => <Tag>{v}</Tag> },
-          { title: '版本', dataIndex: 'platform_version', width: 80 },
-          { title: '类型', dataIndex: 'device_type', width: 80, render: (v: string) => <Tag color={v === 'real' ? 'blue' : 'purple'}>{v === 'real' ? '真机' : '模拟器'}</Tag> },
-          { title: '分辨率', dataIndex: 'resolution', width: 100 },
+          { title: t('common.type'), dataIndex: 'platform', width: 70, render: (v: string) => <Tag>{v}</Tag> },
+          { title: t('common.status'), dataIndex: 'platform_version', width: 80 },
+          { title: t('common.type'), dataIndex: 'device_type', width: 80, render: (v: string) => <Tag color={v === 'real' ? 'blue' : 'purple'}>{v === 'real' ? 'Real' : 'Emulator'}</Tag> },
+          { title: 'Resolution', dataIndex: 'resolution', width: 100 },
           {
-            title: '状态', dataIndex: 'status', width: 80,
+            title: t('common.status'), dataIndex: 'status', width: 80,
             render: (v: string) => <Tag color={statusColors[v] || 'default'}>{statusLabels[v] || v}</Tag>,
           },
           {
-            title: '操作', width: 280,
+            title: t('common.action'), width: 280,
             render: (_, record) => (
               <Space size="small" wrap>
                 <Button type="link" size="small" icon={<CameraOutlined />}
                   loading={actionLoading[`screenshot_${record.id}`]}
-                  onClick={() => handleDeviceAction(record.id, 'screenshot', () => screenshotDevice(record.id), '截图')}
+                  onClick={() => handleDeviceAction(record.id, 'screenshot', () => screenshotDevice(record.id), 'Screenshot')}
                 />
                 <Button type="link" size="small" icon={<LockOutlined />}
                   loading={actionLoading[`lock_${record.id}`]}
-                  onClick={() => handleDeviceAction(record.id, 'lock', () => lockDevice(record.id), '锁定')}
+                  onClick={() => handleDeviceAction(record.id, 'lock', () => lockDevice(record.id), 'Lock')}
                 />
                 <Button type="link" size="small" icon={<UnlockOutlined />}
                   loading={actionLoading[`unlock_${record.id}`]}
-                  onClick={() => handleDeviceAction(record.id, 'unlock', () => unlockDevice(record.id), '解锁')}
+                  onClick={() => handleDeviceAction(record.id, 'unlock', () => unlockDevice(record.id), 'Unlock')}
                 />
                 <Button type="link" size="small" icon={<LinkOutlined />}
                   loading={actionLoading[`connect_${record.id}`]}
-                  onClick={() => handleDeviceAction(record.id, 'connect', () => connectDevice(record.id), '连接')}
+                  onClick={() => handleDeviceAction(record.id, 'connect', () => connectDevice(record.id), 'Connect')}
                 />
                 <Button type="link" size="small" icon={<DisconnectOutlined />}
                   loading={actionLoading[`disconnect_${record.id}`]}
-                  onClick={() => handleDeviceAction(record.id, 'disconnect', () => disconnectDevice(record.id), '断开')}
+                  onClick={() => handleDeviceAction(record.id, 'disconnect', () => disconnectDevice(record.id), 'Disconnect')}
                 />
                 <Button type="link" size="small" icon={<EditOutlined />}
                   onClick={() => { setEditing(record); form.setFieldsValue(record); setModalOpen(true); }}
-                />
+                >{t('common.edit')}</Button>
                 <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                  onClick={async () => { try { await deleteDevice(record.id); message.success('已删除'); loadDevices(); } catch { message.error('删除失败'); } }}
+                  onClick={async () => { try { await deleteDevice(record.id); message.success(t('common.deleted')); loadDevices(); } catch { message.error(t('common.deleteFailed')); } }}
                 />
               </Space>
             ),
@@ -141,24 +143,24 @@ export default function DevicesPage() {
         ]}
       />
 
-      <Modal title={editing ? '编辑设备' : '添加设备'} open={modalOpen}
+      <Modal title={editing ? t('common.edit') : 'Add Device'} open={modalOpen}
         onOk={handleSubmit} onCancel={() => { setModalOpen(false); setEditing(null); }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="device_id" label="设备标识" rules={[{ required: true }]}>
-            <Input placeholder="ADB 序列号或 UDID" />
+          <Form.Item name="device_id" label="Device ID" rules={[{ required: true }]}>
+            <Input placeholder="ADB serial or UDID" />
           </Form.Item>
-          <Form.Item name="name" label="设备名称" rules={[{ required: true }]}>
-            <Input placeholder="如 Pixel 6" />
+          <Form.Item name="name" label={t('common.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('common.name')} />
           </Form.Item>
-          <Form.Item name="platform" label="平台" initialValue="android">
+          <Form.Item name="platform" label={t('common.type')} initialValue="android">
             <Select options={[{ label: 'Android', value: 'android' }, { label: 'iOS', value: 'ios' }]} />
           </Form.Item>
-          <Form.Item name="device_type" label="设备类型" initialValue="real">
-            <Select options={[{ label: '真机', value: 'real' }, { label: '模拟器', value: 'emulator' }]} />
+          <Form.Item name="device_type" label={t('common.type')} initialValue="real">
+            <Select options={[{ label: 'Real', value: 'real' }, { label: 'Emulator', value: 'emulator' }]} />
           </Form.Item>
-          <Form.Item name="project_id" label="关联项目">
-            <Select allowClear placeholder="选择项目（可选）"
+          <Form.Item name="project_id" label="Project">
+            <Select allowClear placeholder={t('common.selectProject')}
               options={projects.map((p) => ({ label: p.name, value: p.id }))}
             />
           </Form.Item>

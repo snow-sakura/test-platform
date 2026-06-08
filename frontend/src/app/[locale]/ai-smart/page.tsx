@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Card, Input, Button, message, Switch, Row, Col, Typography, Space,
@@ -16,6 +17,7 @@ const { TextArea } = Input;
 const { Text, Title } = Typography;
 
 export default function AISmartPage() {
+  const t = useTranslations();
   const [taskDescription, setTaskDescription] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
   const [executionMode, setExecutionMode] = useState<'text' | 'vision'>('text');
@@ -45,7 +47,7 @@ export default function AISmartPage() {
         if (record.status === 'completed' || record.status === 'failed' || record.status === 'cancelled') {
           stopPolling();
           setExecuting(false);
-          // 加载报告
+          // load report
           const reportRes = await getAIExecutionReport(id);
           setReport(reportRes.data);
         }
@@ -58,7 +60,7 @@ export default function AISmartPage() {
 
   const handleRun = async () => {
     if (!taskDescription.trim()) {
-      message.warning('请输入任务描述');
+      message.warning(t('aiSmart.execution.taskPlaceholder'));
       return;
     }
     setExecuting(true);
@@ -73,9 +75,9 @@ export default function AISmartPage() {
       });
       setExecutionId(res.data.execution_id);
       startPolling(res.data.execution_id);
-      message.success('任务已提交');
+      message.success(t('aiSmart.execution.submitted'));
     } catch {
-      message.error('提交失败');
+      message.error(t('aiSmart.execution.submitFailed'));
       setExecuting(false);
     }
   };
@@ -84,15 +86,15 @@ export default function AISmartPage() {
     if (!executionId) return;
     try {
       await stopAIExecution(executionId);
-      message.success('任务已停止');
+      message.success(t('aiSmart.execution.stopped'));
       stopPolling();
       setExecuting(false);
     } catch {
-      message.error('停止失败');
+      message.error(t('aiSmart.execution.stopFailed'));
     }
   };
 
-  // 清理定时器
+  // cleanup interval
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
@@ -100,25 +102,25 @@ export default function AISmartPage() {
   return (
     <div>
       <Row gutter={16}>
-        {/* 左侧：任务输入 */}
+        {/* left: task input */}
         <Col span={12}>
-          <Card title={<><RobotOutlined /> AI 智能浏览器代理</>}>
+          <Card title={<><RobotOutlined /> {t('aiSmart.execution.title')}</>}>
             <Space direction="vertical" style={{ width: '100%' }}>
               <div>
-                <Text strong>任务描述</Text>
+                <Text strong>{t('aiSmart.execution.taskDesc')}</Text>
                 <TextArea
                   rows={4}
-                  placeholder="用自然语言描述要执行的测试任务，如：登录测试账号、搜索商品'手机'、验证搜索结果中包含目标商品"
+                  placeholder={t('aiSmart.execution.taskHint')}
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
                   disabled={executing}
                 />
               </div>
               <div>
-                <Text strong>目标 URL（可选）</Text>
+                <Text strong>{t('aiSmart.execution.targetUrl')}</Text>
                 <Input
                   prefix={<LinkOutlined />}
-                  placeholder="如 https://example.com/login"
+                  placeholder="https://example.com"
                   value={targetUrl}
                   onChange={(e) => setTargetUrl(e.target.value)}
                   disabled={executing}
@@ -126,21 +128,21 @@ export default function AISmartPage() {
               </div>
               <Row gutter={16}>
                 <Col span={8}>
-                  <Text strong>执行模式</Text>
+                  <Text strong>{t('aiSmart.execution.mode')}</Text>
                   <Select
                     style={{ width: '100%' }}
                     value={executionMode}
                     onChange={setExecutionMode}
                     disabled={executing}
                     options={[
-                      { label: '文本模式 (text)', value: 'text' },
-                      { label: '视觉模式 (vision)', value: 'vision' },
+                      { label: t('aiSmart.execution.textMode'), value: 'text' },
+                      { label: t('aiSmart.execution.visionMode'), value: 'vision' },
                     ]}
                   />
                 </Col>
                 <Col span={8}>
                   <Space style={{ marginTop: 16 }}>
-                    <Text strong>录制 GIF</Text>
+                    <Text strong>{t('aiSmart.execution.recordGif')}</Text>
                     <Switch checked={enableGif} onChange={setEnableGif} disabled={executing} />
                   </Space>
                 </Col>
@@ -149,28 +151,28 @@ export default function AISmartPage() {
                 <Button type="primary" icon={<PlayCircleOutlined />}
                   loading={executing} onClick={handleRun}
                   disabled={!taskDescription.trim()}
-                >执行</Button>
+                >{t('aiSmart.execution.execute')}</Button>
                 <Button danger icon={<StopOutlined />}
                   disabled={!executing} onClick={handleStop}
-                >停止</Button>
+                >{t('aiSmart.execution.stop')}</Button>
               </Space>
             </Space>
           </Card>
 
-          {/* 执行报告 */}
+          {/* execution report */}
           {report && (
-            <Card title="执行结果" style={{ marginTop: 16 }} size="small">
+            <Card title={t('aiSmart.execution.result')} style={{ marginTop: 16 }} size="small">
               <Row gutter={16}>
                 <Col span={8}>
-                  <Statistic title="状态" value={report.status === 'completed' ? '成功' : report.status === 'failed' ? '失败' : '已取消'}
+                  <Statistic title={t('aiSmart.execution.status')} value={report.status === 'completed' ? t('aiSmart.execution.success') : report.status === 'failed' ? t('aiSmart.execution.failed') : t('aiSmart.execution.cancelled')}
                     valueStyle={{ color: report.status === 'completed' ? '#52c41a' : '#ff4d4f' }}
                   />
                 </Col>
                 <Col span={8}>
-                  <Statistic title="完成步骤" value={report.steps_completed} />
+                  <Statistic title={t('aiSmart.execution.stepsCompleted')} value={report.steps_completed} />
                 </Col>
                 <Col span={8}>
-                  <Statistic title="耗时" value={report.duration_seconds} suffix="s" />
+                  <Statistic title={t('aiSmart.execution.duration')} value={report.duration_seconds} suffix="s" />
                 </Col>
               </Row>
               {report.summary && (
@@ -180,8 +182,8 @@ export default function AISmartPage() {
               )}
               {report.gif_recording && (
                 <div style={{ marginTop: 8 }}>
-                  <Text strong>GIF 录制回放</Text>
-                  <img src={`/${report.gif_recording}`} alt="AI 执行录制"
+                  <Text strong>{t('aiSmart.execution.gifPlayback')}</Text>
+                  <img src={`/${report.gif_recording}`} alt="AI execution recording"
                     style={{ width: '100%', marginTop: 4, border: '1px solid #d9d9d9', borderRadius: 4 }}
                   />
                 </div>
@@ -190,12 +192,12 @@ export default function AISmartPage() {
           )}
         </Col>
 
-        {/* 右侧：实时日志 */}
+        {/* right: real-time log */}
         <Col span={12}>
-          <Card title="执行日志" extra={executing && <Spin size="small" />}>
+          <Card title={t('aiSmart.execution.log')} extra={executing && <Spin size="small" />}>
             <div style={{ maxHeight: 500, overflow: 'auto' }}>
               {executionLog.length === 0 && !executing && (
-                <Text type="secondary">输入任务并点击执行，AI 将自动分析并执行浏览器操作</Text>
+                <Text type="secondary">{t('aiSmart.execution.inputHint')}</Text>
               )}
               <Timeline
                 items={executionLog.map((entry, i) => {
@@ -209,7 +211,7 @@ export default function AISmartPage() {
                           <Tag>{e.time}</Tag>
                           <Text strong>{e.step}</Text>
                           <Tag color={e.status === 'completed' ? 'green' : e.status === 'failed' ? 'red' : 'processing'}>
-                            {e.status === 'completed' ? '完成' : e.status === 'failed' ? '失败' : '执行中'}
+                            {e.status === 'completed' ? t('aiSmart.execution.completed') : e.status === 'failed' ? t('aiSmart.execution.failed') : t('aiSmart.execution.running')}
                           </Tag>
                         </Space>
                         {e.detail && (

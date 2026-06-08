@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/lib/api/auth';
 import * as authApi from '@/lib/api/auth';
+import { usePermissionStore } from './permission-store';
 
 interface AuthState {
   user: User | null;
@@ -41,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: res.access_token,
           refreshToken: res.refresh_token,
         });
+        usePermissionStore.getState().fetchPermissions();
       },
 
       register: async (data) => {
@@ -50,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: res.access_token,
           refreshToken: res.refresh_token,
         });
+        usePermissionStore.getState().fetchPermissions();
       },
 
       logout: async () => {
@@ -62,6 +65,7 @@ export const useAuthStore = create<AuthState>()(
           // 登出失败不影响清除本地状态
         }
         set({ user: null, accessToken: '', refreshToken: '' });
+        usePermissionStore.getState().reset();
       },
 
       refreshAuth: async () => {

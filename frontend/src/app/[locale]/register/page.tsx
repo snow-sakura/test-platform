@@ -29,8 +29,8 @@ export default function RegisterPage() {
       message.success(t('registerSuccess'));
       router.push('/home');
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || '注册失败';
-      message.error(detail);
+      const detail = err?.response?.data?.detail || err?.message;
+      message.error(detail || t('registerFailed'));
     } finally {
       setLoading(false);
     }

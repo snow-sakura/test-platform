@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { Table, Card, Button, message, Modal, Typography } from 'antd';
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -11,6 +12,7 @@ import type { PerformanceReport } from '@/lib/api/performance';
 const { Text } = Typography;
 
 export default function PerformanceReportsPage() {
+  const t = useTranslations();
   const [data, setData] = useState<{ count: number; results: PerformanceReport[] }>({ count: 0, results: [] });
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -22,7 +24,7 @@ export default function PerformanceReportsPage() {
     try {
       const res = await getPerformanceReports({ page, page_size: 20 });
       setData(res.data);
-    } catch { message.error('加载报告列表失败'); }
+    } catch { message.error(t('performance.report.loadFailed')); }
     finally { setLoading(false); }
   }, [page]);
 
@@ -33,22 +35,22 @@ export default function PerformanceReportsPage() {
       const res = await getPerformanceReport(id);
       setDetailReport(res.data);
       setDetailOpen(true);
-    } catch { message.error('加载报告详情失败'); }
+    } catch { message.error(t('performance.report.loadDetailFailed')); }
   };
 
-  /* 报告 ECharts 配置 */
+  /* report ECharts configuration */
   const latencyChartOption = detailReport?.content ? {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['平均延迟 (ms)'], top: 0 },
+    legend: { data: [t('performance.report.avgLatencyMs')], top: 0 },
     grid: { left: 60, right: 20, bottom: 40, top: 40 },
     xAxis: {
       type: 'category',
       data: (detailReport.content.time_series as any[])?.map((d: any) => `${d.time}s`) || [],
       axisLabel: { fontSize: 11 },
     },
-    yAxis: { type: 'value', name: '延迟 (ms)' },
+    yAxis: { type: 'value', name: t('performance.report.latencyMs') },
     series: [{
-      name: '平均延迟 (ms)',
+      name: t('performance.report.avgLatencyMs'),
       type: 'line',
       smooth: true,
       data: (detailReport.content.time_series as any[])?.map((d: any) => d.avg_latency_ms) || [],
@@ -64,7 +66,7 @@ export default function PerformanceReportsPage() {
 
   const throughputChartOption = detailReport?.content ? {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['吞吐量 (req/s)', '错误数'], top: 0 },
+    legend: { data: [t('performance.report.throughput'), t('performance.report.errorCount')], top: 0 },
     grid: { left: 60, right: 60, bottom: 40, top: 40 },
     xAxis: {
       type: 'category',
@@ -72,11 +74,11 @@ export default function PerformanceReportsPage() {
     },
     yAxis: [
       { type: 'value', name: 'req/s' },
-      { type: 'value', name: '错误数' },
+      { type: 'value', name: t('performance.report.errorCount') },
     ],
     series: [
       {
-        name: '吞吐量 (req/s)',
+        name: t('performance.report.throughput'),
         type: 'line',
         smooth: true,
         data: (detailReport.content.time_series as any[])?.map((d: any) => d.rps) || [],
@@ -84,7 +86,7 @@ export default function PerformanceReportsPage() {
         itemStyle: { color: '#52c41a' },
       },
       {
-        name: '错误数',
+        name: t('performance.report.errorCount'),
         type: 'bar',
         yAxisIndex: 1,
         data: (detailReport.content.time_series as any[])?.map((d: any) => d.error_count) || [],
@@ -98,15 +100,15 @@ export default function PerformanceReportsPage() {
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-    { title: '报告名称', dataIndex: 'name', key: 'name', ellipsis: true },
-    { title: '执行 ID', dataIndex: 'execution_id', key: 'execution_id', width: 90 },
-    { title: '摘要', dataIndex: 'summary', key: 'summary', ellipsis: true },
-    { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
+    { title: t('performance.report.name'), dataIndex: 'name', key: 'name', ellipsis: true },
+    { title: t('performance.report.executionId'), dataIndex: 'execution_id', key: 'execution_id', width: 90 },
+    { title: t('performance.report.summary'), dataIndex: 'summary', key: 'summary', ellipsis: true },
+    { title: t('performance.report.createdAt'), dataIndex: 'created_at', key: 'created_at', width: 180 },
     {
-      title: '操作', key: 'action', width: 100,
+      title: t('common.action'), key: 'action', width: 100,
       render: (_: any, record: PerformanceReport) => (
         <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record.id)}>
-          查看详情
+          {t('performance.report.detail')}
         </Button>
       ),
     },
@@ -115,12 +117,12 @@ export default function PerformanceReportsPage() {
   return (
     <div>
       <Card
-        size="small" title="压测报告"
-        extra={<Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>刷新</Button>}
+        size="small" title={t('performance.report.title')}
+        extra={<Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>{t('performance.report.refresh')}</Button>}
       >
         <Table
           dataSource={data.results} columns={columns} rowKey="id" loading={loading}
-          pagination={{ current: page, total: data.count, pageSize: 20, onChange: setPage, showTotal: (t) => `共 ${t} 条` }}
+          pagination={{ current: page, total: data.count, pageSize: 20, onChange: setPage, showTotal: (total) => t('common.totalCount', { count: total }) }}
           size="small"
         />
       </Card>
@@ -132,12 +134,12 @@ export default function PerformanceReportsPage() {
           <div>
             {summary && (
               <div style={{ marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <Text>总请求: <strong>{summary.total_requests}</strong></Text>
-                <Text>平均延迟: <strong>{summary.avg_response_time_ms?.toFixed(0)}ms</strong></Text>
+                <Text>{t('performance.report.totalRequests')}: <strong>{summary.total_requests}</strong></Text>
+                <Text>{t('performance.report.avgLatency')}: <strong>{summary.avg_response_time_ms?.toFixed(0)}ms</strong></Text>
                 <Text>P95: <strong>{summary.p95_ms?.toFixed(0)}ms</strong></Text>
                 <Text>P99: <strong>{summary.p99_ms?.toFixed(0)}ms</strong></Text>
-                <Text>错误率: <strong>{((summary.error_rate || 0) * 100).toFixed(1)}%</strong></Text>
-                <Text>吞吐量: <strong>{summary.throughput?.toFixed(1)}/s</strong></Text>
+                <Text>{t('performance.report.errorRate')}: <strong>{((summary.error_rate || 0) * 100).toFixed(1)}%</strong></Text>
+                <Text>{t('performance.report.throughput')}: <strong>{summary.throughput?.toFixed(1)}/s</strong></Text>
               </div>
             )}
 
@@ -152,7 +154,7 @@ export default function PerformanceReportsPage() {
               </div>
             )}
             {!latencyChartOption && (
-              <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>暂无详细报告数据</div>
+              <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>{t('performance.report.noData')}</div>
             )}
           </div>
         )}

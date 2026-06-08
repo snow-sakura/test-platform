@@ -54,7 +54,7 @@ export default function Documents({ projectId, onDocumentsChange }: Props) {
     try {
       const res = await getDocument(projectId, doc.id);
       setPreviewTitle(doc.filename);
-      setPreviewContent(res.data.content || '（暂无解析内容）');
+      setPreviewContent(res.data.content || t('common.noData'));
       setPreviewOpen(true);
     } catch {
       message.error(t('common.loadFailed'));
@@ -135,10 +135,8 @@ export default function Documents({ projectId, onDocumentsChange }: Props) {
           <p className="ant-upload-drag-icon">
             <InboxOutlined />
           </p>
-          <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-          <p className="ant-upload-hint">
-            支持 PDF、DOCX、Markdown、YAML、CSV 格式
-          </p>
+          <p className="ant-upload-text">{t('project.uploadDragHint')}</p>
+          <p className="ant-upload-hint">{t('project.uploadFormats')}</p>
         </Dragger>
       </div>
 

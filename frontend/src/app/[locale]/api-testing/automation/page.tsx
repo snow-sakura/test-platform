@@ -6,6 +6,7 @@ import {
   Row, Select, Space, Tag, Typography,
 } from 'antd';
 import { PlusOutlined, ThunderboltOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import {
   getApiProjects, getTestSuites, createTestSuite,
   deleteTestSuite, getTestSuite, updateTestSuite,
@@ -15,7 +16,7 @@ import type { ApiProject, ApiTestSuite, ApiRequest, SuiteExecuteResult, SingleRe
 
 const { Text } = Typography;
 
-/** 测试套件自动化页面 */
+/** Test suite automation page */
 export default function AutomationPage() {
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
@@ -28,10 +29,13 @@ export default function AutomationPage() {
   const [createModal, setCreateModal] = useState(false);
   const [newName, setNewName] = useState('');
 
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
+
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results);
-    }).catch((e) => console.warn('加载项目列表失败', e));
+    }).catch((e) => console.warn(t('project.loadProjectsFailed'), e));
   }, []);
 
   const fetchSuites = useCallback(() => {
@@ -62,7 +66,7 @@ export default function AutomationPage() {
       fetchSuites();
       handleSelectSuite(res.data);
     } catch {
-      message.error('创建失败');
+      message.error(t('automation.createFailed'));
     }
   };
 
@@ -73,7 +77,7 @@ export default function AutomationPage() {
       const res = await executeTestSuite(selectedSuite.id);
       setExecResult(res.data);
     } catch {
-      message.error('执行失败');
+      message.error(t('automation.executeFailed'));
     } finally {
       setExecuting(false);
     }
@@ -85,9 +89,9 @@ export default function AutomationPage() {
     try {
       await updateTestSuite(selectedSuite.id, { request_ids: newIds });
       setSelectedSuite({ ...selectedSuite, request_ids: newIds });
-      message.success('已移除');
+      message.success(t('automation.removed'));
     } catch {
-      message.error('移除失败');
+      message.error(t('automation.removeFailed'));
     }
   };
 
@@ -99,13 +103,13 @@ export default function AutomationPage() {
             <Select
               value={projectId}
               onChange={setProjectId}
-              placeholder="选择项目"
+              placeholder={tc('selectProject')}
               style={{ width: '100%' }}
               options={projects.map((p) => ({ value: p.id, label: p.name }))}
             />
           }>
             <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => setCreateModal(true)} style={{ marginBottom: 12 }}>
-              新建套件
+              {t('automation.create')}
             </Button>
             <List
               size="small"
@@ -121,7 +125,7 @@ export default function AutomationPage() {
                   }}
                 >
                   <Text>{item.name}</Text>
-                  <Tag>{item.request_ids?.length || 0} 个请求</Tag>
+                  <Tag>{item.request_ids?.length || 0} {t('automation.requestCount')}</Tag>
                 </List.Item>
               )}
             />
@@ -133,25 +137,25 @@ export default function AutomationPage() {
               extra={
                 <Space>
                   <Button type="primary" icon={<ThunderboltOutlined />} onClick={handleExecute} loading={executing}>
-                    执行套件
+                    {t('automation.execute')}
                   </Button>
-                  <Popconfirm title="确定删除？" onConfirm={async () => {
+                  <Popconfirm title={t('automation.deleteConfirm')} onConfirm={async () => {
                     await deleteTestSuite(selectedSuite.id);
                     setSelectedSuite(null);
                     fetchSuites();
                   }}>
-                    <Button danger size="small">删除</Button>
+                    <Button danger size="small">{tc('delete')}</Button>
                   </Popconfirm>
                 </Space>
               }
             >
               <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                {selectedSuite.description || '暂无描述'} | 共 {selectedSuite.request_ids?.length || 0} 个请求
+                {selectedSuite.description || t('automation.noDescription')} | {tc('total')} {selectedSuite.request_ids?.length || 0} {t('automation.requestCount')}
               </Text>
 
               <List
                 size="small"
-                header={<strong>请求列表</strong>}
+                header={<strong>{t('automation.requests')}</strong>}
                 dataSource={selectedSuite.request_ids || []}
                 renderItem={(reqId) => (
                   <SuiteRequestItem
@@ -163,39 +167,41 @@ export default function AutomationPage() {
               />
 
               {execResult && (
-                <Card size="small" title="执行结果" style={{ marginTop: 16 }}>
+                <Card size="small" title={t('automation.results')} style={{ marginTop: 16 }}>
                   <Space>
-                    <Tag color="blue">总数: {execResult.total}</Tag>
-                    <Tag color="success">通过: {execResult.passed}</Tag>
-                    <Tag color="error">失败: {execResult.failed}</Tag>
-                    <Tag>耗时: {execResult.duration_ms.toFixed(0)}ms</Tag>
+                    <Tag color="blue">{tc('total')}: {execResult.total}</Tag>
+                    <Tag color="success">{tc('passed')}: {execResult.passed}</Tag>
+                    <Tag color="error">{tc('failed')}: {execResult.failed}</Tag>
+                    <Tag>{t('automation.duration')}: {execResult.duration_ms.toFixed(0)}ms</Tag>
                   </Space>
                 </Card>
               )}
             </Card>
           ) : (
-            <div style={{ color: '#999', textAlign: 'center', padding: 60 }}>请从左侧选择一个测试套件</div>
+            <div style={{ color: '#999', textAlign: 'center', padding: 60 }}>{t('automation.selectFromLeft')}</div>
           )}
         </Col>
       </Row>
 
-      <Modal title="新建测试套件" open={createModal} onOk={handleCreate} onCancel={() => setCreateModal(false)}>
-        <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="套件名称" />
+      <Modal title={t('automation.create')} open={createModal} onOk={handleCreate} onCancel={() => setCreateModal(false)}>
+        <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('automation.name')} />
       </Modal>
     </div>
   );
 }
 
-/** 套件中的请求条目组件 */
+/** Request item within a test suite */
 function SuiteRequestItem({ requestId, result, onRemove }: {
   requestId: number;
   result?: SingleRequestResult;
   onRemove: () => void;
 }) {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [req, setReq] = useState<ApiRequest | null>(null);
 
   useEffect(() => {
-    getRequest(requestId).then((res) => setReq(res.data)).catch((e) => console.warn('加载请求详情失败', e));
+    getRequest(requestId).then((res) => setReq(res.data)).catch((e) => console.warn(t('automation.loadFailed'), e));
   }, [requestId]);
 
   return (
@@ -204,14 +210,14 @@ function SuiteRequestItem({ requestId, result, onRemove }: {
       actions={[
         result && (
           result.passed
-            ? <Tag color="success"><CheckCircleOutlined /> 通过</Tag>
-            : <Tag color="error"><CloseCircleOutlined /> 失败</Tag>
+            ? <Tag color="success"><CheckCircleOutlined /> {tc('passed')}</Tag>
+            : <Tag color="error"><CloseCircleOutlined /> {tc('failed')}</Tag>
         ),
-        <Button type="link" danger size="small" onClick={onRemove}>移除</Button>,
+        <Button type="link" danger size="small" onClick={onRemove}>{tc('delete')}</Button>,
       ].filter(Boolean)}
     >
       <Tag>{req?.method || '?'}</Tag>
-      <Text ellipsis style={{ maxWidth: 300 }}>{req?.name || `请求 #${requestId}`}</Text>
+      <Text ellipsis style={{ maxWidth: 300 }}>{req?.name || `${t('interface.create')} #${requestId}`}</Text>
       {result && result.status_code && <Tag>{result.status_code}</Tag>}
       {result && <Text type="secondary">{result.elapsed_ms?.toFixed(0)}ms</Text>}
       {result?.error && <Text type="danger" style={{ fontSize: 12 }}>{result.error}</Text>}

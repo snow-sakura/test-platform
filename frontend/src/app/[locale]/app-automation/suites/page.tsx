@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import {
   Table, Button, message, Modal, Form, Input, Select, Space, Tag, Row, Col,
@@ -12,6 +13,7 @@ import {
 import type { AppProject, AppTestSuite, AppTestCase } from '@/lib/api/app-automation';
 
 export default function AppSuitesPage() {
+  const t = useTranslations();
   const [projects, setProjects] = useState<AppProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number>();
   const [suites, setSuites] = useState<AppTestSuite[]>([]);
@@ -29,12 +31,12 @@ export default function AppSuitesPage() {
       const res = await getAppTestSuites({ project_id: selectedProjectId, page, page_size: 20 });
       setSuites(res.data.results || []);
       setTotal(res.data.count || 0);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setLoading(false); }
   };
 
   useEffect(() => {
-    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
+    getAppProjects({ page_size: 100 }).then((r) => setProjects(r.data.results || [])).catch((e) => console.warn(t('common.loadFailed'), e));
   }, []);
 
   useEffect(() => { loadSuites(); }, [selectedProjectId]);
@@ -43,11 +45,11 @@ export default function AppSuitesPage() {
     const values = await form.validateFields();
     try {
       await createAppTestSuite({ ...values, project_id: selectedProjectId });
-      message.success('创建成功');
+      message.success(t('common.createSuccess'));
       setModalOpen(false);
       form.resetFields();
       loadSuites();
-    } catch { message.error('创建失败'); }
+    } catch { message.error(t('common.createFailed')); }
   };
 
   const viewDetail = async (id: number) => {
@@ -55,21 +57,21 @@ export default function AppSuitesPage() {
       const res = await getAppTestSuite(id);
       setCurrentSuite(res.data);
       setDetailOpen(true);
-    } catch { message.error('加载详情失败'); }
+    } catch { message.error(t('common.loadFailed')); }
   };
 
   const handleExecute = async (id: number) => {
     try {
       await executeAppTestSuite(id);
-      message.success('套件执行已触发');
-    } catch { message.error('执行失败'); }
+      message.success(t('appAutomation.suite.executionTriggered'));
+    } catch { message.error(t('common.operationFailed')); }
   };
 
   return (
     <div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <Select placeholder="选择项目" allowClear style={{ width: '100%' }}
+          <Select placeholder={t('common.selectProject')} allowClear style={{ width: '100%' }}
             value={selectedProjectId} onChange={setSelectedProjectId}
             options={projects.map((p) => ({ label: p.name, value: p.id }))}
           />
@@ -77,27 +79,27 @@ export default function AppSuitesPage() {
         <Col>
           <Button type="primary" icon={<PlusOutlined />} disabled={!selectedProjectId}
             onClick={() => { form.resetFields(); setModalOpen(true); }}
-          >新建套件</Button>
+          >{t('common.create')}</Button>
         </Col>
       </Row>
 
       <Table rowKey="id" loading={loading} dataSource={suites} size="small"
-        pagination={{ total, pageSize: 20, showTotal: (t) => `共 ${t} 条` }}
+        pagination={{ total, pageSize: 20, showTotal: (n) => t('common.totalCount', { count: n }) }}
         columns={[
-          { title: '套件名称', dataIndex: 'name', width: 200 },
-          { title: '用例数', dataIndex: 'case_count', width: 80 },
-          { title: '描述', dataIndex: 'description', ellipsis: true },
-          { title: '创建时间', dataIndex: 'created_at', width: 170 },
+          { title: t('appAutomation.suite.name'), dataIndex: 'name', width: 200 },
+          { title: t('appAutomation.suite.caseCount'), dataIndex: 'case_count', width: 80 },
+          { title: t('common.description'), dataIndex: 'description', ellipsis: true },
+          { title: t('common.createdAt'), dataIndex: 'created_at', width: 170 },
           {
-            title: '操作', width: 220,
+            title: t('common.action'), width: 220,
             render: (_, record) => (
               <Space>
-                <Button type="link" size="small" onClick={() => viewDetail(record.id)}>详情</Button>
+                <Button type="link" size="small" onClick={() => viewDetail(record.id)}>{t('common.detail')}</Button>
                 <Button type="link" size="small" icon={<PlayCircleOutlined />}
                   onClick={() => handleExecute(record.id)}
-                >执行</Button>
+                >{t('common.execute')}</Button>
                 <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                  onClick={async () => { try { await deleteAppTestSuite(record.id); message.success('已删除'); loadSuites(); } catch { message.error('删除失败'); } }}
+                  onClick={async () => { try { await deleteAppTestSuite(record.id); message.success(t('appAutomation.suite.deleted')); loadSuites(); } catch { message.error(t('common.deleteFailed')); } }}
                 />
               </Space>
             ),
@@ -105,25 +107,25 @@ export default function AppSuitesPage() {
         ]}
       />
 
-      <Modal title="新建套件" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)}>
+      <Modal title={t('common.create')} open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)}>
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="套件名称" rules={[{ required: true }]}>
-            <Input placeholder="如 回归测试套件" />
+          <Form.Item name="name" label={t('common.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('common.name')} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>
       </Modal>
 
-      <Modal title={`套件详情 - ${currentSuite?.name}`} open={detailOpen}
+      <Modal title={`${t('common.detail')} - ${currentSuite?.name}`} open={detailOpen}
         onCancel={() => setDetailOpen(false)} footer={null} width={700}
       >
         <Table dataSource={currentSuite?.cases || []} rowKey="id" size="small" pagination={false}
           columns={[
-            { title: '用例名称', dataIndex: 'name', width: 200 },
-            { title: '优先级', dataIndex: 'priority', width: 80, render: (v: string) => <Tag>{v}</Tag> },
-            { title: '描述', dataIndex: 'description', ellipsis: true },
+            { title: t('appAutomation.suite.caseName'), dataIndex: 'name', width: 200 },
+            { title: t('common.priority'), dataIndex: 'priority', width: 80, render: (v: string) => <Tag>{v}</Tag> },
+            { title: t('common.description'), dataIndex: 'description', ellipsis: true },
           ]}
         />
       </Modal>

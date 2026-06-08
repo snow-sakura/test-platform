@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import {
   Table, Button, message, Modal, Tag, Space, Row, Col, Card, Statistic, Typography,
@@ -15,15 +16,16 @@ import type { AIExecutionRecord, ExecutionReport } from '@/lib/api/ai-smart';
 
 const { Text } = Typography;
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending: { label: '等待中', color: 'default' },
-  running: { label: '执行中', color: 'processing' },
-  completed: { label: '已完成', color: 'green' },
-  failed: { label: '失败', color: 'red' },
-  cancelled: { label: '已取消', color: 'orange' },
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'default', running: 'processing', completed: 'green', failed: 'red', cancelled: 'orange',
+};
+
+const STATUS_KEYS: Record<string, string> = {
+  pending: 'waiting', running: 'running', completed: 'completed', failed: 'failed', cancelled: 'cancelled',
 };
 
 export default function AIExecutionsPage() {
+  const t = useTranslations();
   const [executions, setExecutions] = useState<AIExecutionRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,13 +35,18 @@ export default function AIExecutionsPage() {
   const [report, setReport] = useState<ExecutionReport | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
 
+  const getStatusLabel = (status: string) => {
+    const key = STATUS_KEYS[status] || status;
+    return t(`aiSmart.executionRecord.${key}`) || status;
+  };
+
   const loadExecutions = async (page = 1) => {
     setLoading(true);
     try {
       const res = await getAIExecutions({ page, page_size: 20 });
       setExecutions(res.data.results || []);
       setTotal(res.data.count || 0);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('aiSmart.executionRecord.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -50,7 +57,7 @@ export default function AIExecutionsPage() {
       const res = await getAIExecution(id);
       setCurrentRecord(res.data);
       setDetailOpen(true);
-    } catch { message.error('加载详情失败'); }
+    } catch { message.error(t('aiSmart.executionRecord.loadDetailFailed')); }
   };
 
   const viewReport = async (id: number) => {
@@ -58,25 +65,25 @@ export default function AIExecutionsPage() {
       const res = await getAIExecutionReport(id);
       setReport(res.data);
       setReportOpen(true);
-    } catch { message.error('加载报告失败'); }
+    } catch { message.error(t('aiSmart.executionRecord.loadReportFailed')); }
   };
 
   const handleStop = async (id: number) => {
     try {
       await stopAIExecution(id);
-      message.success('已停止');
+      message.success(t('aiSmart.executionRecord.stopped'));
       loadExecutions();
-    } catch { message.error('操作失败'); }
+    } catch { message.error(t('aiSmart.executionRecord.operationFailed')); }
   };
 
   const handleBatchDelete = async () => {
     if (!selectedRowKeys.length) return;
     try {
       await batchDeleteAIExecutions(selectedRowKeys);
-      message.success('批量删除成功');
+      message.success(t('aiSmart.executionRecord.batchDeleteSuccess'));
       setSelectedRowKeys([]);
       loadExecutions();
-    } catch { message.error('删除失败'); }
+    } catch { message.error(t('aiSmart.executionRecord.deleteFailed')); }
   };
 
   const handleExportPdf = async (id: number) => {
@@ -89,8 +96,8 @@ export default function AIExecutionsPage() {
       a.download = `execution_${id}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-      message.success('导出成功');
-    } catch { message.error('导出失败'); }
+      message.success(t('aiSmart.executionRecord.exportSuccess'));
+    } catch { message.error(t('aiSmart.executionRecord.exportFailed')); }
   };
 
   return (
@@ -98,42 +105,41 @@ export default function AIExecutionsPage() {
       {selectedRowKeys.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <Button danger icon={<DeleteOutlined />} onClick={handleBatchDelete}>
-            删除选中 ({selectedRowKeys.length})
+            {t('aiSmart.executionRecord.deleteSelected')} ({selectedRowKeys.length})
           </Button>
         </div>
       )}
 
       <Table rowKey="id" loading={loading} dataSource={executions} size="small"
-        pagination={{ total, pageSize: 20, onChange: loadExecutions, showTotal: (t) => `共 ${t} 条` }}
+        pagination={{ total, pageSize: 20, onChange: loadExecutions, showTotal: (totalCount) => t('common.totalCount', { count: totalCount }) }}
         rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys as number[]) }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 60 },
-          { title: '任务描述', dataIndex: 'task_description', ellipsis: true },
-          { title: '完成步骤', dataIndex: 'steps_completed', width: 80 },
+          { title: t('aiSmart.executionRecord.taskDesc'), dataIndex: 'task_description', ellipsis: true },
+          { title: t('aiSmart.executionRecord.stepsCompleted'), dataIndex: 'steps_completed', width: 80 },
           {
-            title: '状态', dataIndex: 'status', width: 90,
+            title: t('aiSmart.executionRecord.status'), dataIndex: 'status', width: 90,
             render: (v: string) => {
-              const s = STATUS_MAP[v] || { label: v, color: 'default' };
-              return <Tag color={s.color}>{s.label}</Tag>;
+              return <Tag color={STATUS_COLORS[v] || 'default'}>{getStatusLabel(v)}</Tag>;
             },
           },
-          { title: '开始时间', dataIndex: 'started_at', width: 170 },
+          { title: t('aiSmart.executionRecord.startTime'), dataIndex: 'started_at', width: 170 },
           {
-            title: '操作', width: 200,
+            title: t('common.action'), width: 200,
             render: (_, record) => (
               <Space>
-                <a onClick={() => viewDetail(record.id)}>详情</a>
-                <a onClick={() => viewReport(record.id)}>报告</a>
+                <a onClick={() => viewDetail(record.id)}>{t('aiSmart.executionRecord.detail')}</a>
+                <a onClick={() => viewReport(record.id)}>{t('aiSmart.executionRecord.report')}</a>
                 <Button type="link" size="small" icon={<FilePdfOutlined />}
                   onClick={() => handleExportPdf(record.id)}
                 >PDF</Button>
                 {record.status === 'running' && (
                   <Button type="link" size="small" icon={<StopOutlined />}
                     onClick={() => handleStop(record.id)}
-                  >停止</Button>
+                  >{t('aiSmart.executionRecord.stop')}</Button>
                 )}
                 <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                  onClick={async () => { try { await deleteAIExecution(record.id); message.success('已删除'); loadExecutions(); } catch { message.error('删除失败'); } }}
+                  onClick={async () => { try { await deleteAIExecution(record.id); message.success(t('aiSmart.executionRecord.deleted')); loadExecutions(); } catch { message.error(t('aiSmart.executionRecord.deleteFailed')); } }}
                 />
               </Space>
             ),
@@ -141,36 +147,36 @@ export default function AIExecutionsPage() {
         ]}
       />
 
-      {/* 详情弹窗 */}
-      <Modal title={`执行详情 #${currentRecord?.id}`} open={detailOpen}
+      {/* detail modal */}
+      <Modal title={`${t('aiSmart.executionRecord.executionDetail')} #${currentRecord?.id}`} open={detailOpen}
         onCancel={() => setDetailOpen(false)} footer={null} width={700}
       >
         {currentRecord && (
           <div>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-              <Col span={6}><Statistic title="状态" value={STATUS_MAP[currentRecord.status]?.label || currentRecord.status} /></Col>
-              <Col span={6}><Statistic title="完成步骤" value={currentRecord.steps_completed} /></Col>
-              <Col span={6}><Statistic title="GIF 录制" value={currentRecord.enable_gif ? '是' : '否'} /></Col>
-              <Col span={6}><Statistic title="模式" value={currentRecord.execution_mode === 'vision' ? '视觉' : '文本'} /></Col>
+              <Col span={6}><Statistic title={t('aiSmart.executionRecord.status')} value={getStatusLabel(currentRecord.status)} /></Col>
+              <Col span={6}><Statistic title={t('aiSmart.executionRecord.stepsCompleted')} value={currentRecord.steps_completed} /></Col>
+              <Col span={6}><Statistic title={t('aiSmart.executionRecord.gifRecording')} value={currentRecord.enable_gif ? t('common.yes') : t('common.no')} /></Col>
+              <Col span={6}><Statistic title={t('aiSmart.executionRecord.mode')} value={currentRecord.execution_mode === 'vision' ? t('aiSmart.executionRecord.vision') : t('aiSmart.executionRecord.text')} /></Col>
             </Row>
-            <Text strong>任务描述：</Text>
+            <Text strong>{t('aiSmart.executionRecord.taskDesc')}：</Text>
             <p>{currentRecord.task_description}</p>
             {currentRecord.summary && (
               <>
-                <Text strong>总结：</Text>
+                <Text strong>{t('aiSmart.executionRecord.summary')}：</Text>
                 <p>{currentRecord.summary}</p>
               </>
             )}
             {currentRecord.execution_log && currentRecord.execution_log.length > 0 && (
               <>
-                <Text strong>执行日志：</Text>
+                <Text strong>{t('aiSmart.executionRecord.log')}：</Text>
                 <Table dataSource={currentRecord.execution_log as Record<string, unknown>[]} rowKey={(r: any) => `${r.time}-${r.step}`}
                   size="small" pagination={false}
                   columns={[
-                    { title: '时间', dataIndex: 'time', width: 80 },
-                    { title: '步骤', dataIndex: 'step' },
+                    { title: t('aiSmart.executionRecord.time'), dataIndex: 'time', width: 80 },
+                    { title: t('aiSmart.executionRecord.step'), dataIndex: 'step' },
                     {
-                      title: '状态', dataIndex: 'status', width: 80,
+                      title: t('aiSmart.executionRecord.status'), dataIndex: 'status', width: 80,
                       render: (v: string) => <Tag color={v === 'completed' ? 'green' : v === 'failed' ? 'red' : 'blue'}>{v}</Tag>,
                     },
                   ]}
@@ -179,32 +185,32 @@ export default function AIExecutionsPage() {
             )}
             {currentRecord.gif_recording && (
               <div style={{ marginTop: 8 }}>
-                <Text strong>GIF 回放：</Text>
-                <img src={`/${currentRecord.gif_recording}`} alt="录制" style={{ width: '100%', marginTop: 4, border: '1px solid #d9d9d9', borderRadius: 4 }} />
+                <Text strong>{t('aiSmart.executionRecord.gifPlayback')}：</Text>
+                <img src={`/${currentRecord.gif_recording}`} alt="recording" style={{ width: '100%', marginTop: 4, border: '1px solid #d9d9d9', borderRadius: 4 }} />
               </div>
             )}
           </div>
         )}
       </Modal>
 
-      {/* 报告弹窗 */}
-      <Modal title="执行报告" open={reportOpen}
+      {/* report modal */}
+      <Modal title={t('aiSmart.executionRecord.executionReport')} open={reportOpen}
         onCancel={() => setReportOpen(false)} footer={null} width={600}
       >
         {report && (
           <div>
             <Row gutter={16} style={{ marginBottom: 16 }}>
-              <Col span={8}><Statistic title="状态" value={report.status === 'completed' ? '通过' : report.status === 'failed' ? '失败' : '已取消'}
+              <Col span={8}><Statistic title={t('aiSmart.executionRecord.status')} value={report.status === 'completed' ? t('aiSmart.executionRecord.passed') : report.status === 'failed' ? t('aiSmart.executionRecord.failed') : t('aiSmart.executionRecord.cancelled')}
                 valueStyle={{ color: report.status === 'completed' ? '#52c41a' : '#ff4d4f' }} /></Col>
-              <Col span={8}><Statistic title="完成步骤" value={report.steps_completed} /></Col>
-              <Col span={8}><Statistic title="耗时" value={report.duration_seconds} suffix="s" /></Col>
+              <Col span={8}><Statistic title={t('aiSmart.executionRecord.stepsCompleted')} value={report.steps_completed} /></Col>
+              <Col span={8}><Statistic title={t('aiSmart.executionRecord.duration')} value={report.duration_seconds} suffix="s" /></Col>
             </Row>
-            <p><strong>任务：</strong>{report.task_description}</p>
-            {report.summary && <p><strong>总结：</strong>{report.summary}</p>}
+            <p><strong>{t('aiSmart.executionRecord.taskDesc')}：</strong>{report.task_description}</p>
+            {report.summary && <p><strong>{t('aiSmart.executionRecord.summary')}：</strong>{report.summary}</p>}
             {report.gif_recording && (
               <div style={{ marginTop: 8 }}>
-                <strong>GIF 录制：</strong>
-                <img src={`/${report.gif_recording}`} alt="录制" style={{ width: '100%', marginTop: 4, border: '1px solid #d9d9d9', borderRadius: 4 }} />
+                <strong>{t('aiSmart.executionRecord.gifRecording')}：</strong>
+                <img src={`/${report.gif_recording}`} alt="recording" style={{ width: '100%', marginTop: 4, border: '1px solid #d9d9d9', borderRadius: 4 }} />
               </div>
             )}
           </div>

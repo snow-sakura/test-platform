@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
@@ -12,10 +12,14 @@ const antdLocales: Record<string, any> = {
   en: enUS,
 };
 
-export const metadata: Metadata = {
-  title: 'TestPlate',
-  description: 'TestPlate — AI 驱动的全栈测试管理平台',
-};
+export async function generateMetadata({ params }: { params: { locale: string } }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'home' });
+  return {
+    title: 'TestPlate',
+    description: t('subtitle'),
+  };
+}
 
 export default async function LocaleLayout({
   children,

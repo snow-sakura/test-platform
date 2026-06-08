@@ -15,7 +15,7 @@ import { useAuthStore } from '@/stores/auth-store';
 const { Header } = Layout;
 
 const localeMap: Record<string, string> = {
-  'zh-cn': '中文',
+  'zh-cn': '简体中文',
   en: 'English',
 };
 

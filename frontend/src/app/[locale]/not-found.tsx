@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export default function NotFound() {
+  const t = useTranslations();
   const params = useParams();
   const locale = params.locale as string;
 
@@ -19,9 +21,9 @@ export default function NotFound() {
       }}
     >
       <div style={{ fontSize: 64, marginBottom: 16 }}>404</div>
-      <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 24 }}>页面未找到</div>
+      <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 24 }}>{t('pageNotFound')}</div>
       <Link href={`/${locale}/home`} style={{ color: '#1677ff' }}>
-        返回首页
+        {t('backToHome')}
       </Link>
     </div>
   );

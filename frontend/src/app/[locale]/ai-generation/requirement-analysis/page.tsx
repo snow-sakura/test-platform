@@ -10,6 +10,7 @@ import {
   UploadOutlined, FileTextOutlined, ThunderboltOutlined,
   InboxOutlined,
 } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import type { UploadFile } from 'antd/es/upload';
 import {
   uploadDocument, listDocuments, analyzeDocument,
@@ -25,6 +26,8 @@ const { Dragger } = Upload;
 const { Title, Text } = Typography;
 
 export default function RequirementAnalysisPage() {
+  const t = useTranslations('aiGeneration');
+  const tc = useTranslations('common');
   const router = useRouter();
 
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -81,11 +84,11 @@ export default function RequirementAnalysisPage() {
     try {
       const file = fileList[0].originFileObj as File;
       await uploadDocument(file);
-      message.success('上传成功');
+      message.success(t('requirement.uploadSuccess'));
       setFileList([]);
       loadDocs();
     } catch (e: any) {
-      message.error(e?.response?.data?.detail || '上传失败');
+      message.error(e?.response?.data?.detail || t('requirement.uploadFailed'));
     }
     setUploading(false);
   };
@@ -99,15 +102,15 @@ export default function RequirementAnalysisPage() {
       setCurrentAnalysisId(res.data.id);
       const reqs = await getAnalysisRequirements(res.data.id);
       setRequirements(reqs.data);
-      message.success('分析完成');
+      message.success(t('requirement.analysisComplete'));
     } catch (e: any) {
-      message.error(e?.response?.data?.detail || '分析失败');
+      message.error(e?.response?.data?.detail || t('requirement.analysisFailed'));
     }
     setAnalyzing(false);
   };
 
   const handleAnalyzeText = async () => {
-    if (!rawText.trim()) { message.warning('请输入需求文本'); return; }
+    if (!rawText.trim()) { message.warning(t('requirement.inputRequirement')); return; }
     setAnalyzing(true);
     setRequirements([]);
     try {
@@ -115,16 +118,16 @@ export default function RequirementAnalysisPage() {
       setCurrentAnalysisId(res.data.id);
       const reqs = await getAnalysisRequirements(res.data.id);
       setRequirements(reqs.data);
-      message.success('分析完成');
+      message.success(t('requirement.analysisComplete'));
     } catch (e: any) {
-      message.error(e?.response?.data?.detail || '分析失败');
+      message.error(e?.response?.data?.detail || t('requirement.analysisFailed'));
     }
     setAnalyzing(false);
   };
 
   const handleGenerate = async () => {
-    if (!currentAnalysisId) { message.warning('请先完成需求分析'); return; }
-    if (!selectedWriter) { message.warning('请选择 Writer 模型'); return; }
+    if (!currentAnalysisId) { message.warning(t('requirement.analyzeFirst')); return; }
+    if (!selectedWriter) { message.warning(t('requirement.selectWriter')); return; }
     setGenerating(true);
     try {
       const task = await createTask({
@@ -137,10 +140,10 @@ export default function RequirementAnalysisPage() {
         writer_prompt_id: selectedPrompt,
         generation_config_id: selectedGenConfig,
       });
-      message.success('生成任务已启动');
+      message.success(t('requirement.taskStarted'));
       router.push('/ai-generation/generated-cases');
     } catch (e: any) {
-      message.error(e?.response?.data?.detail || '启动失败');
+      message.error(e?.response?.data?.detail || t('requirement.taskFailed'));
     }
     setGenerating(false);
   };
@@ -149,22 +152,22 @@ export default function RequirementAnalysisPage() {
 
   return (
     <div>
-      <Title level={4}>需求导入与分析</Title>
-      <Text type="secondary">上传需求文档或输入需求文本，提取业务需求，启动 AI 用例生成</Text>
+      <Title level={4}>{t('requirement.title')}</Title>
+      <Text type="secondary">{t('requirement.uploadDoc')}</Text>
       <Divider />
 
       {configStatus && !canGenerate && (
         <Alert
           type="warning" showIcon
-          message="配置不完整"
-          description="请先在「模型配置」中添加并激活 Writer 模型配置"
-          action={<Button size="small" onClick={() => router.push('/ai-generation/ai-model-config')}>前往配置</Button>}
+          message={t('requirement.configIncomplete')}
+          description={t('requirement.selectWriter')}
+          action={<Button size="small" onClick={() => router.push('/ai-generation/ai-model-config')}>{t('requirement.goToConfig')}</Button>}
           style={{ marginBottom: 16 }}
         />
       )}
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <Card title="上传文档" size="small" style={{ flex: 1, minWidth: 350 }}>
+        <Card title={tc('upload')} size="small" style={{ flex: 1, minWidth: 350 }}>
           <Dragger
             fileList={fileList}
             onChange={(info) => setFileList(info.fileList.slice(-1))}
@@ -172,25 +175,25 @@ export default function RequirementAnalysisPage() {
             accept=".pdf,.docx,.md,.txt,.csv,.yaml,.yml"
           >
             <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-            <p>点击或拖拽文件上传</p>
-            <p style={{ fontSize: 12 }}>支持 PDF / DOCX / MD / TXT / CSV / YAML</p>
+            <p>{t('requirement.clickToUpload')}</p>
+            <p style={{ fontSize: 12 }}>PDF / DOCX / MD / TXT / CSV / YAML</p>
           </Dragger>
           <Button type="primary" onClick={handleUpload} loading={uploading} disabled={fileList.length === 0} icon={<UploadOutlined />} style={{ marginTop: 12 }} block>
-            上传
+            {tc('upload')}
           </Button>
           <div style={{ marginTop: 16 }}>
-            <Text strong>已上传文档</Text>
+            <Text strong>{t('requirement.uploadedDoc')}</Text>
             <Table
               dataSource={docs} rowKey="id" loading={loadingDocs} size="small" pagination={false}
               style={{ marginTop: 8 }}
               columns={[
-                { title: '标题', dataIndex: 'title', ellipsis: true },
-                { title: '类型', dataIndex: 'file_type', width: 70 },
+                { title: tc('name'), dataIndex: 'title', ellipsis: true },
+                { title: tc('type'), dataIndex: 'file_type', width: 70 },
                 {
-                  title: '操作', width: 120,
+                  title: tc('action'), width: 120,
                   render: (_: any, record: RequirementDocument) => (
                     <Button size="small" type="link" loading={analyzing && selectedDocId === record.id} onClick={() => handleAnalyzeDoc(record.id)}>
-                      分析
+                      {t('requirement.analyze')}
                     </Button>
                   ),
                 },
@@ -199,59 +202,59 @@ export default function RequirementAnalysisPage() {
           </div>
         </Card>
 
-        <Card title="输入需求文本" size="small" style={{ flex: 1, minWidth: 350 }}>
+        <Card title={t('requirement.inputRequirement')} size="small" style={{ flex: 1, minWidth: 350 }}>
           <TextArea
             rows={6}
-            placeholder="在此粘贴需求文本内容，多个段落用空行分隔..."
+            placeholder={t('requirement.inputPlaceholder')}
             value={rawText} onChange={(e) => setRawText(e.target.value)}
           />
           <Button type="primary" onClick={handleAnalyzeText} loading={analyzing && !selectedDocId} disabled={!rawText.trim()} icon={<FileTextOutlined />} style={{ marginTop: 12 }} block>
-            分析文本
+            {t('requirement.analyzeText')}
           </Button>
         </Card>
       </div>
 
-      {analyzing && <Card style={{ marginTop: 16 }}><Spin tip="正在分析需求..." /></Card>}
+      {analyzing && <Card style={{ marginTop: 16 }}><Spin tip={`${tc('loading')}`} /></Card>}
 
       {requirements.length > 0 && (
-        <Card title={`业务需求（共 ${requirements.length} 条）`} style={{ marginTop: 16 }}>
+        <Card title={`${t('requirement.businessRequirement')}（${tc('totalCount', { count: requirements.length })}）`} style={{ marginTop: 16 }}>
           <Table
             dataSource={requirements} rowKey="id" size="small" pagination={{ pageSize: 10 }}
             columns={[
-              { title: '标题', dataIndex: 'title', ellipsis: true },
-              { title: '描述', dataIndex: 'description', ellipsis: true },
+              { title: t('requirement.title'), dataIndex: 'title', ellipsis: true },
+              { title: tc('description'), dataIndex: 'description', ellipsis: true },
               {
-                title: '优先级', dataIndex: 'priority', width: 90,
+                title: tc('priority'), dataIndex: 'priority', width: 90,
                 render: (v: string) => {
                   const color = v === 'HIGH' ? 'red' : v === 'MEDIUM' ? 'orange' : 'green';
                   return <Tag color={color}>{v}</Tag>;
                 },
               },
-              { title: '分类', dataIndex: 'category', width: 80 },
+              { title: tc('type'), dataIndex: 'category', width: 80 },
             ]}
           />
           <Divider />
-          <Title level={5}>启动 AI 用例生成</Title>
+          <Title level={5}>{t('requirement.startGeneration')}</Title>
           <Space wrap style={{ marginBottom: 16 }}>
             <Select
-              placeholder="选择 Writer 模型 *" style={{ width: 220 }}
+              placeholder={t('requirement.selectWriter')} style={{ width: 220 }}
               value={selectedWriter} onChange={setSelectedWriter}
               options={modelConfigs.map((m: any) => ({ label: `${m.name} (${m.model_name})`, value: m.id }))}
             />
             <Select
-              placeholder="选择 Writer 提示词（可选）" style={{ width: 220 }}
+              placeholder={tc('selectPlaceholder')} style={{ width: 220 }}
               value={selectedPrompt} onChange={setSelectedPrompt} allowClear
               options={promptConfigs.filter((p: any) => p.prompt_type === 'testcase_writer').map((p: any) => ({ label: p.name, value: p.id }))}
             />
             <Select
-              placeholder="选择生成配置（可选）" style={{ width: 220 }}
+              placeholder={tc('selectPlaceholder')} style={{ width: 220 }}
               value={selectedGenConfig} onChange={setSelectedGenConfig} allowClear
               options={genConfigs.map((g: any) => ({ label: g.name, value: g.id }))}
             />
           </Space>
           <div>
             <Button type="primary" size="large" icon={<ThunderboltOutlined />} onClick={handleGenerate} loading={generating} disabled={!selectedWriter}>
-              开始生成用例
+              {t('requirement.startGeneration')}
             </Button>
           </div>
         </Card>

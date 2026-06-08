@@ -45,7 +45,7 @@ async def list_scenes(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取压测场景列表"""
     skip = (page - 1) * page_size
@@ -60,7 +60,7 @@ async def list_scenes(
 async def retrieve_scene(
     scene_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取压测场景详情"""
     scene = await get_scene(db, scene_id)
@@ -75,7 +75,7 @@ async def create_new_scene(
     data: SceneCreate = ...,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("test_mgmt.create")),
+    _=Depends(require_permission("performance.create")),
 ):
     """创建压测场景"""
     scene = await create_scene(db, project_id, current_user.id, data.model_dump())
@@ -87,7 +87,7 @@ async def update_existing_scene(
     scene_id: int,
     data: SceneUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.edit")),
+    _=Depends(require_permission("performance.edit")),
 ):
     """更新压测场景"""
     scene = await get_scene(db, scene_id)
@@ -101,7 +101,7 @@ async def update_existing_scene(
 async def delete_existing_scene(
     scene_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.delete")),
+    _=Depends(require_permission("performance.delete")),
 ):
     """删除压测场景"""
     scene = await get_scene(db, scene_id)
@@ -122,7 +122,7 @@ async def upload_jmx_file(
     description: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("test_mgmt.create")),
+    _=Depends(require_permission("performance.create")),
 ):
     """上传 JMeter JMX 文件"""
     if not file.filename or not file.filename.endswith(".jmx"):
@@ -150,7 +150,7 @@ async def upload_jmx_file(
 async def list_jmx_files(
     project_id: int = Query(...),
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取 JMX 文件列表"""
     files = await get_jmx_files(db, project_id)
@@ -161,7 +161,7 @@ async def list_jmx_files(
 async def delete_jmx_file_endpoint(
     file_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.delete")),
+    _=Depends(require_permission("performance.delete")),
 ):
     """删除 JMX 文件"""
     jmx = await get_jmx_file(db, file_id)
@@ -184,7 +184,7 @@ async def execute_scene(
     scene_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("test_mgmt.execute")),
+    _=Depends(require_permission("performance.execute")),
 ):
     """执行压测场景（返回执行 ID，SSE 推送进度）"""
     scene = await get_scene(db, scene_id)
@@ -210,7 +210,7 @@ async def execution_stream(
     execution_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """SSE 推送执行进度"""
     execution = await get_execution(db, execution_id)
@@ -273,7 +273,7 @@ async def list_executions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取执行记录列表"""
     skip = (page - 1) * page_size
@@ -288,7 +288,7 @@ async def list_executions(
 async def retrieve_execution(
     execution_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取执行详情"""
     execution = await get_execution(db, execution_id)
@@ -308,7 +308,7 @@ async def list_reports(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取压测报告列表"""
     skip = (page - 1) * page_size
@@ -323,7 +323,7 @@ async def list_reports(
 async def retrieve_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_permission("test_mgmt.view")),
+    _=Depends(require_permission("performance.view")),
 ):
     """获取压测报告详情"""
     report = await get_report(db, report_id)

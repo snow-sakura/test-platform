@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Table, Button, Space, message, Modal, Form, Input, Select } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { createSuite, deleteSuite, getSuites } from '@/lib/api/test-management';
@@ -11,6 +12,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function SuitesPage() {
+  const t = useTranslations();
   const router = useRouter();
   const locale = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'zh-cn';
   const [projects, setProjects] = useState<ApiProject[]>([]);
@@ -22,7 +24,7 @@ export default function SuitesPage() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('加载项目列表失败', e));
+    getApiProjects({ page_size: 100 }).then((res) => setProjects(res.data.results || [])).catch((e) => console.warn('Failed to load project list', e));
   }, []);
 
   const loadSuites = async () => {
@@ -32,7 +34,7 @@ export default function SuitesPage() {
       const res = await getSuites(projectId);
       setSuites(res.data.results || []);
       setTotal(res.data.count || 0);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('testManagement.suite.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -43,26 +45,26 @@ export default function SuitesPage() {
     const values = await form.validateFields();
     try {
       await createSuite(projectId, values);
-      message.success('创建成功');
+      message.success(t('testManagement.suite.createSuccess'));
       setModalOpen(false);
       form.resetFields();
       loadSuites();
-    } catch { message.error('创建失败'); }
+    } catch { message.error(t('testManagement.suite.createFailed')); }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await deleteSuite(id);
-      message.success('已删除');
+      message.success(t('testManagement.suite.deleted'));
       loadSuites();
-    } catch { message.error('删除失败'); }
+    } catch { message.error(t('testManagement.suite.deleteFailed')); }
   };
 
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <Select
-          placeholder="请选择项目"
+          placeholder={t('testManagement.suite.selectProject')}
           style={{ width: 300 }}
           value={projectId}
           onChange={setProjectId}
@@ -71,7 +73,7 @@ export default function SuitesPage() {
           filterOption
         />
         <Button type="primary" icon={<PlusOutlined />} disabled={!projectId} onClick={() => setModalOpen(true)}>
-          新建套件
+          {t('testManagement.suite.create')}
         </Button>
       </div>
 
@@ -79,34 +81,34 @@ export default function SuitesPage() {
         rowKey="id"
         loading={loading}
         dataSource={suites}
-        pagination={{ total, pageSize: 20, showTotal: (t) => `共 ${t} 条` }}
+        pagination={{ total, pageSize: 20, showTotal: (totalCount) => t('common.totalCount', { count: totalCount }) }}
         size="small"
         columns={[
-          { title: '名称', dataIndex: 'name' },
-          { title: '描述', dataIndex: 'description', ellipsis: true },
-          { title: '用例数', dataIndex: 'case_count', width: 80 },
+          { title: t('testManagement.suite.name'), dataIndex: 'name' },
+          { title: t('common.description'), dataIndex: 'description', ellipsis: true },
+          { title: t('testManagement.suite.caseCount'), dataIndex: 'case_count', width: 80 },
           {
-            title: '操作', width: 120,
+            title: t('common.action'), width: 120,
             render: (_, record) => (
               <Space>
                 <Button type="link" size="small"
                   onClick={() => router.push(`/${locale}/test-management/suites/${record.id}`)}
-                >详情</Button>
+                >{t('testManagement.suite.detail')}</Button>
                 <Button type="link" danger size="small" icon={<DeleteOutlined />}
                   onClick={() => handleDelete(record.id)}
-                >删除</Button>
+                >{t('testManagement.suite.delete')}</Button>
               </Space>
             ),
           },
         ]}
       />
 
-      <Modal title="新建套件" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)}>
+      <Modal title={t('testManagement.suite.create')} open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)}>
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="名称" rules={[{ required: true }]}>
-            <Input placeholder="套件名称" />
+          <Form.Item name="name" label={t('testManagement.suite.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('testManagement.suite.name')} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={t('testManagement.suite.description')}>
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>

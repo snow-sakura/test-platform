@@ -52,19 +52,33 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   configuration: <SettingOutlined />,
 };
 
-/* 模块的快捷操作配置 */
-const QUICK_ACTIONS: Record<string, { label: string; path: string; icon: React.ReactNode }[]> = {
-  projects: [{ label: '创建项目', path: '/projects', icon: <PlusOutlined /> }],
-  testManagement: [{ label: '新建用例', path: '/test-management/cases/create', icon: <PlusOutlined /> }],
-  apiTesting: [{ label: '新建接口', path: '/api-testing/interfaces', icon: <PlusOutlined /> }],
-  uiAutomation: [{ label: '新建脚本', path: '/ui-automation/scripts', icon: <PlusOutlined /> }],
-  appAutomation: [{ label: '设备管理', path: '/app-automation/devices', icon: <PlusOutlined /> }],
-  performance: [{ label: '新建场景', path: '/performance/scenarios', icon: <PlusOutlined /> }],
-  aiGeneration: [{ label: 'AI 生成', path: '/ai-generation/requirement-analysis', icon: <PlusOutlined /> }],
-  aiIntelligent: [{ label: 'AI 执行', path: '/ai-smart', icon: <RightCircleOutlined /> }],
-  aiReviewer: [{ label: 'AI 对话', path: '/ai-evaluator', icon: <MessageOutlined /> }],
-  dataFactory: [{ label: '生成数据', path: '/data-factory', icon: <PlusOutlined /> }],
-  configuration: [{ label: '系统设置', path: '/settings', icon: <SettingOutlined /> }],
+/* i18n key → 快捷操作配置 */
+const QUICK_ACTION_KEYS: Record<string, string> = {
+  projects: 'home.createProject',
+  testManagement: 'home.newTestCase',
+  apiTesting: 'home.newInterface',
+  uiAutomation: 'home.newScript',
+  appAutomation: 'home.deviceManagement',
+  performance: 'home.newScene',
+  aiGeneration: 'home.aiGenerate',
+  aiIntelligent: 'home.aiExecute',
+  aiReviewer: 'home.aiChat',
+  dataFactory: 'home.generateData',
+  configuration: 'home.systemSettings',
+};
+
+const QUICK_ACTION_PATHS: Record<string, string> = {
+  projects: '/projects',
+  testManagement: '/test-management/cases/create',
+  apiTesting: '/api-testing/interfaces',
+  uiAutomation: '/ui-automation/scripts',
+  appAutomation: '/app-automation/devices',
+  performance: '/performance/scenarios',
+  aiGeneration: '/ai-generation/requirement-analysis',
+  aiIntelligent: '/ai-smart',
+  aiReviewer: '/ai-evaluator',
+  dataFactory: '/data-factory',
+  configuration: '/settings',
 };
 
 export default function HomePage() {
@@ -132,19 +146,21 @@ export default function HomePage() {
                 hoverable
                 onClick={() => handleClick(key)}
                 style={{ cursor: 'pointer', height: '100%' }}
-                actions={[
-                  ...(QUICK_ACTIONS[key] || []).map((action) => (
-                    <Button
-                      key={action.label}
-                      type="link"
-                      size="small"
-                      icon={action.icon}
-                      onClick={(e) => handleQuickAction(e, action.path)}
-                    >
-                      {action.label}
-                    </Button>
-                  )),
-                ]}
+                actions={
+                  QUICK_ACTION_KEYS[key]
+                    ? [
+                        <Button
+                          key={key}
+                          type="link"
+                          size="small"
+                          icon={<PlusOutlined />}
+                          onClick={(e) => handleQuickAction(e, QUICK_ACTION_PATHS[key])}
+                        >
+                          {t(QUICK_ACTION_KEYS[key])}
+                        </Button>,
+                      ]
+                    : undefined
+                }
               >
                 <div style={{ textAlign: 'center', padding: '8px 0' }}>
                   {/* 图标 */}
@@ -167,12 +183,12 @@ export default function HomePage() {
                     {configured ? (
                       <Space>
                         <Tag icon={<CheckCircleFilled />} color="success">
-                          {status?.count && status.count > 0 ? `${status.count} 项` : '已就绪'}
+                          {status?.count && status.count > 0 ? `${status.count}${t('home.count')}` : t('home.ready')}
                         </Tag>
                       </Space>
                     ) : (
                       <Tag icon={<MinusCircleFilled />} color="default">
-                        未配置
+                        {t('home.notConfigured')}
                       </Tag>
                     )}
                   </div>

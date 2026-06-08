@@ -11,9 +11,9 @@ export default function PerformanceLayout({ children }: { children: React.ReactN
   const router = useRouter();
 
   const tabItems = useMemo(() => [
-    { key: '/performance', label: '压测场景' },
-    { key: '/performance/executions', label: '执行记录' },
-    { key: '/performance/reports', label: '压测报告' },
+    { key: '/performance', label: t('performance.layout.scenes') },
+    { key: '/performance/executions', label: t('performance.layout.executions') },
+    { key: '/performance/reports', label: t('performance.layout.reports') },
   ], []);
 
   const localePath = '/' + pathname.split('/').filter(Boolean).slice(1).join('/');
@@ -23,7 +23,7 @@ export default function PerformanceLayout({ children }: { children: React.ReactN
 
   return (
     <div style={{ padding: 24 }}>
-      <h2 style={{ marginBottom: 16 }}>性能测试</h2>
+      <h2 style={{ marginBottom: 16 }}>{t('performance.title')}</h2>
       <Tabs
         activeKey={activeKey}
         onChange={(key) => router.push(key)}

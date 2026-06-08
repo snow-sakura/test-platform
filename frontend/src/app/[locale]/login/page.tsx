@@ -22,8 +22,9 @@ export default function LoginPage() {
       message.success(t('loginSuccess'));
       router.push('/home');
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || '登录失败';
-      message.error(detail);
+      const detail = err?.response?.data?.detail || err?.message || t('loginFailed');
+      const fallback = t('loginFailed');
+      message.error(detail || fallback);
     } finally {
       setLoading(false);
     }

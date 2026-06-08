@@ -24,7 +24,7 @@ export default function CiCdWebhookEventsPage() {
     try {
       const res = await getWebhookEvents({ page, page_size: 20 });
       setData(res.data);
-    } catch { message.error('加载 Webhook 事件失败'); }
+    } catch { message.error(t('ciCd.loadWebhookFailed')); }
     finally { setLoading(false); }
   }, [page]);
 
@@ -34,8 +34,8 @@ export default function CiCdWebhookEventsPage() {
     { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
     { title: t('ciCd.ciType'), dataIndex: 'ci_type', key: 'ci_type', width: 110, render: (v: string) => <Tag color={CI_TAG_COLORS[v] || 'default'}>{v?.toUpperCase()}</Tag> },
     { title: t('ciCd.triggerEvent'), dataIndex: 'event_type', key: 'event_type', width: 130 },
-    { title: '关联管道', dataIndex: 'pipeline_id', key: 'pipeline_id', width: 100, render: (v: number | null) => v ? `#${v}` : '-' },
-    { title: '来源 IP', dataIndex: 'ip_address', key: 'ip_address', width: 150 },
+    { title: t('ciCd.relatedPipeline'), dataIndex: 'pipeline_id', key: 'pipeline_id', width: 100, render: (v: number | null) => v ? `#${v}` : '-' },
+    { title: t('ciCd.sourceIp'), dataIndex: 'ip_address', key: 'ip_address', width: 150 },
     { title: t('ciCd.createdAt'), dataIndex: 'received_at', key: 'received_at', width: 180 },
     {
       title: t('common.action'), key: 'action', width: 100,
@@ -50,10 +50,10 @@ export default function CiCdWebhookEventsPage() {
 
   return (
     <div>
-      <Card size="small" title={t('ciCd.webhookEvents')} extra={<Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>刷新</Button>}>
+      <Card size="small" title={t('ciCd.webhookEvents')} extra={<Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>{t('ciCd.webhookRefresh')}</Button>}>
         <Table
           dataSource={data.results} columns={columns} rowKey="id" loading={loading}
-          pagination={{ current: page, total: data.count, pageSize: 20, onChange: setPage, showTotal: (total) => `共 ${total} 条` }}
+          pagination={{ current: page, total: data.count, pageSize: 20, onChange: setPage, showTotal: (total) => t('common.totalCount', { count: total }) }}
           size="small"
         />
       </Card>

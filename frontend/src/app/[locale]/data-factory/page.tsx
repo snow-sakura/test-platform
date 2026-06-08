@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, useCallback } from 'react';
 import {
   Card, Row, Col, Typography, Tag, message, Table, Input, Button, Modal, Space,
@@ -20,6 +21,7 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 export default function DataFactoryPage() {
+  const t = useTranslations();
   const [categories, setCategories] = useState<ToolCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('testdata');
   const [selectedTool, setSelectedTool] = useState<ToolInfo | null>(null);
@@ -36,22 +38,22 @@ export default function DataFactoryPage() {
   const [funcDrawerOpen, setFuncDrawerOpen] = useState(false);
   const [variableFunctions, setVariableFunctions] = useState<VariableFunction[]>([]);
 
-  // 场景视图：按测试场景组织推荐工具
+  // scene view: organize by test scenario
   const scenes = [
-    { key: 'user', label: '用户数据生成', icon: '👤', description: '生成注册/登录表单所需的模拟用户数据', categories: ['testdata', 'personal'] },
-    { key: 'order', icon: '📦', label: '订单数据生成', description: '构造订单号、金额、状态等订单流程测试数据', categories: ['testdata'] },
-    { key: 'payment', icon: '💰', label: '支付数据生成', description: '生成支付流水号、交易记录等支付场景数据', categories: ['testdata'] },
-    { key: 'address', icon: '📍', label: '地址数据生成', description: '生成省市/街道/邮编等地址信息', categories: ['personal', 'text'] },
-    { key: 'person', icon: '🆔', label: '身份信息生成', description: '生成姓名/身份证/邮箱等个人身份数据', categories: ['personal'] },
-    { key: 'phone', icon: '📱', label: '手机号码生成', description: '生成各运营商手机号段测试号码', categories: ['personal'] },
-    { key: 'log', icon: '📋', label: '日志数据生成', description: '生成系统日志/错误日志等文本数据', categories: ['text'] },
-    { key: 'code', icon: '🔢', label: '编码/条码生成', description: '生成条形码/二维码/序列号等编码数据', categories: ['barcode'] },
+    { key: 'user', label: t('dataFactory.userData'), icon: '👤', description: 'Generate mock user data', categories: ['testdata', 'personal'] },
+    { key: 'order', icon: '📦', label: t('dataFactory.orderData'), description: 'Build order test data', categories: ['testdata'] },
+    { key: 'payment', icon: '💰', label: t('dataFactory.paymentData'), description: 'Generate payment test data', categories: ['testdata'] },
+    { key: 'address', icon: '📍', label: t('dataFactory.addressData'), description: 'Generate address test data', categories: ['personal', 'text'] },
+    { key: 'person', icon: '🆔', label: t('dataFactory.identityData'), description: 'Generate identity test data', categories: ['personal'] },
+    { key: 'phone', icon: '📱', label: t('dataFactory.phoneData'), description: 'Generate phone number test data', categories: ['personal'] },
+    { key: 'log', icon: '📋', label: t('dataFactory.logData'), description: 'Generate log test data', categories: ['text'] },
+    { key: 'code', icon: '🔢', label: t('dataFactory.barcodeData'), description: 'Generate barcode/code data', categories: ['barcode'] },
   ];
 
   useEffect(() => {
-    getDataFactoryCategories().then((r) => setCategories(r.data || [])).catch((e) => console.warn('加载分类列表失败', e));
-    getDataFactoryStats().then((r) => setStats(r.data)).catch((e) => console.warn('加载统计失败', e));
-    getVariableFunctions().then((r) => setVariableFunctions(r.data || [])).catch((e) => console.warn('加载变量函数失败', e));
+    getDataFactoryCategories().then((r) => setCategories(r.data || [])).catch((e) => console.warn(t('dataFactory.loadCategoriesFailed'), e));
+    getDataFactoryStats().then((r) => setStats(r.data)).catch((e) => console.warn(t('dataFactory.loadStatsFailed'), e));
+    getVariableFunctions().then((r) => setVariableFunctions(r.data || [])).catch((e) => console.warn(t('dataFactory.loadVariablesFailed'), e));
     loadRecords();
   }, []);
 
@@ -65,7 +67,7 @@ export default function DataFactoryPage() {
 
   const currentCategory = categories.find((c) => c.name === selectedCategory);
 
-  // 选择工具时初始化参数默认值
+  // init param defaults when selecting tool
   const handleSelectTool = useCallback((tool: ToolInfo) => {
     setSelectedTool(tool);
     const defaults: Record<string, unknown> = {};
@@ -93,7 +95,7 @@ export default function DataFactoryPage() {
       });
       setResult(res.data.output);
     } catch {
-      message.error('执行失败');
+      message.error(t('dataFactory.executeFailed'));
     }
     finally { setExecuting(false); }
   };
@@ -111,7 +113,7 @@ export default function DataFactoryPage() {
       });
       setBatchResults(res.data.results.map((r) => r.output || r.error || ''));
     } catch {
-      message.error('批量执行失败');
+      message.error(t('dataFactory.batchFailed'));
     }
     finally {
       setExecuting(false);
@@ -122,9 +124,9 @@ export default function DataFactoryPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      message.success('已复制到剪贴板');
+      message.success(t('dataFactory.copied'));
     } catch {
-      message.error('复制失败');
+      message.error(t('dataFactory.copyFailed'));
     }
   };
 
@@ -178,7 +180,7 @@ export default function DataFactoryPage() {
       <Row gutter={[16, 16]}>
         {/* 左侧：分类 + 工具列表 */}
         <Col span={6}>
-          <Card size="small" title="工具分类" style={{ marginBottom: 8 }}>
+          <Card size="small" title={t('dataFactory.categories')} style={{ marginBottom: 8 }}>
             <Row gutter={[4, 4]}>
               {categories.map((cat) => (
                 <Col span={24} key={cat.name}>
@@ -197,7 +199,7 @@ export default function DataFactoryPage() {
             activeKey={activeTab}
             onChange={setActiveTab}
             items={[
-              { key: 'tools', label: '工具列表', children: (
+              { key: 'tools', label: t('dataFactory.tools'), children: (
                 <div style={{ maxHeight: 400, overflow: 'auto' }}>
                   {currentCategory?.tools.map((tool) => (
                     <Card key={tool.name} size="small" hoverable
@@ -210,18 +212,18 @@ export default function DataFactoryPage() {
                     </Card>
                   ))}
                   {(!currentCategory || currentCategory.tools.length === 0) && (
-                    <Empty description="该分类暂无工具" />
+                    <Empty description={t('dataFactory.noTools')} />
                   )}
                 </div>
               )},
-              { key: 'scenes', label: '场景视图', children: (
+              { key: 'scenes', label: t('dataFactory.tabScene'), children: (
                 <div style={{ maxHeight: 400, overflow: 'auto' }}>
                   <Row gutter={[4, 4]}>
                     {scenes.map((scene) => (
                       <Col span={12} key={scene.key}>
                         <Card size="small" hoverable
                           onClick={() => {
-                            // 切换到场景推荐分类
+                            // switch to recommended category
                             const cat = categories.find((c) => scene.categories.includes(c.name));
                             if (cat) setSelectedCategory(cat.name);
                             setActiveTab('tools');
@@ -238,12 +240,12 @@ export default function DataFactoryPage() {
                   </Row>
                 </div>
               )},
-              { key: 'records', label: '历史记录', children: (
+              { key: 'records', label: t('dataFactory.tabHistory'), children: (
                 <Table dataSource={records} rowKey="id" size="small" pagination={false}
                   columns={[
-                    { title: '工具', dataIndex: 'tool_name', width: 100 },
-                    { title: '结果', dataIndex: 'output_data', ellipsis: true },
-                    { title: '时间', dataIndex: 'created_at', width: 80 },
+                    { title: t('dataFactory.tools'), dataIndex: 'tool_name', width: 100 },
+                    { title: t('dataFactory.result'), dataIndex: 'output_data', ellipsis: true },
+                    { title: t('dataFactory.time'), dataIndex: 'created_at', width: 80 },
                   ]}
                 />
               )},
@@ -261,9 +263,9 @@ export default function DataFactoryPage() {
                     <Tag>{selectedTool.name}</Tag>
                     <Button size="small" icon={<ThunderboltOutlined />} type="primary"
                       loading={executing} onClick={handleExecute}
-                    >执行</Button>
-                    <Button size="small" onClick={() => setBatchOpen(true)}>批量</Button>
-                    <Button size="small" icon={<CodeOutlined />} onClick={() => setFuncDrawerOpen(true)}>变量助手</Button>
+                    >{t('dataFactory.execute')}</Button>
+                    <Button size="small" onClick={() => setBatchOpen(true)}>{t('dataFactory.batchExecute')}</Button>
+                    <Button size="small" icon={<CodeOutlined />} onClick={() => setFuncDrawerOpen(true)}>{t('dataFactory.variableHelper')}</Button>
                   </Space>
                 }>
                   <p><Text type="secondary">{selectedTool.description}</Text></p>
@@ -277,31 +279,31 @@ export default function DataFactoryPage() {
                 </Card>
               </Col>
               <Col span={12}>
-                <Card title="执行结果" extra={
-                  result ? <Button size="small" icon={<CopyOutlined />} onClick={() => copyToClipboard(result)}>复制</Button> : null
+                <Card title={t('dataFactory.executionResult')} extra={
+                  result ? <Button size="small" icon={<CopyOutlined />} onClick={() => copyToClipboard(result)}>{t('dataFactory.copy')}</Button> : null
                 }>
                   {result ? (
                     <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 400, overflow: 'auto' }}>
                       {result}
                     </pre>
                   ) : (
-                    <Text type="secondary">设置参数后点击"执行"按钮</Text>
+                    <Text type="secondary">{t('dataFactory.execute')}...</Text>
                   )}
                 </Card>
               </Col>
             </Row>
           ) : (
             <Card>
-              <Empty description="从左侧选择一个数据生成工具" />
+              <Empty description={t('dataFactory.tools')} />
             </Card>
           )}
 
           {/* 批量结果 */}
           {batchResults.length > 0 && (
-            <Card title="批量生成结果" style={{ marginTop: 16 }} size="small">
+            <Card title={t('dataFactory.batchResults')} style={{ marginTop: 16 }} size="small">
               <Button size="small" icon={<CopyOutlined />}
                 onClick={() => copyToClipboard(batchResults.join('\n---\n'))}
-              >复制全部</Button>
+              >{t('dataFactory.copyAll')}</Button>
               <div style={{ marginTop: 8 }}>
                 {batchResults.map((r, i) => (
                   <Card key={i} size="small" style={{ marginBottom: 4 }}>
@@ -318,21 +320,21 @@ export default function DataFactoryPage() {
           {/* 使用统计 */}
           {stats && (
             <Row gutter={16} style={{ marginTop: 16 }}>
-              <Col span={6}><Card size="small"><Statistic title="总执行" value={stats.total_executions} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title="今日" value={stats.today_executions} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title="工具数" value={stats.tool_count} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title="分类数" value={stats.category_count} /></Card></Col>
+              <Col span={6}><Card size="small"><Statistic title={t('dataFactory.totalExecutions')} value={stats.total_executions} /></Card></Col>
+              <Col span={6}><Card size="small"><Statistic title={t('dataFactory.today')} value={stats.today_executions} /></Card></Col>
+              <Col span={6}><Card size="small"><Statistic title={t('dataFactory.toolCount')} value={stats.tool_count} /></Card></Col>
+              <Col span={6}><Card size="small"><Statistic title={t('dataFactory.categoryCount')} value={stats.category_count} /></Card></Col>
             </Row>
           )}
         </Col>
       </Row>
 
       {/* 批量生成弹窗 */}
-      <Modal title="批量生成" open={batchOpen} onOk={handleBatchExecute}
+      <Modal title={t('dataFactory.batchGenerate')} open={batchOpen} onOk={handleBatchExecute}
         onCancel={() => setBatchOpen(false)} confirmLoading={executing}
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Text>生成数量</Text>
+          <Text>{t('dataFactory.generateCount')}</Text>
           <InputNumber min={1} max={100} value={batchCount} onChange={(v) => setBatchCount(v || 5)}
             style={{ width: '100%' }}
           />
@@ -341,18 +343,18 @@ export default function DataFactoryPage() {
 
       {/* 变量函数助手 Drawer */}
       <Drawer
-        title={<span><CodeOutlined /> 变量函数助手</span>}
+        title={<span><CodeOutlined /> {t('dataFactory.variableHelpers')}</span>}
         open={funcDrawerOpen}
         onClose={() => setFuncDrawerOpen(false)}
         width={400}
       >
         {variableFunctions.length === 0 ? (
-          <Empty description="暂无可用变量函数" />
+          <Empty description={t('dataFactory.noVariables')} />
         ) : (
           <Collapse
             items={Object.entries(
               variableFunctions.reduce<Record<string, VariableFunction[]>>((acc, fn) => {
-                const cat = fn.category || '其他';
+                const cat = fn.category || t('dataFactory.others');
                 if (!acc[cat]) acc[cat] = [];
                 acc[cat].push(fn);
                 return acc;
@@ -368,8 +370,8 @@ export default function DataFactoryPage() {
                   style={{ marginBottom: 6, cursor: 'pointer' }}
                   onClick={() => {
                     navigator.clipboard.writeText(fn.example).then(() => {
-                      message.success(`已复制语法: ${fn.example}`);
-                    }).catch(() => message.error('复制失败'));
+                      message.success(`${t('dataFactory.syntaxCopied')}: ${fn.example}`);
+                    }).catch(() => message.error(t('dataFactory.copyFailed')));
                   }}
                 >
                   <Space>
@@ -387,7 +389,7 @@ export default function DataFactoryPage() {
         )}
         <div style={{ marginTop: 16 }}>
           <Text type="secondary">
-            <InfoCircleOutlined /> 点击函数卡片即可复制语法到剪贴板，粘贴到文本参数中使用。
+            <InfoCircleOutlined /> {t('dataFactory.clickToCopy')}
           </Text>
         </div>
       </Drawer>

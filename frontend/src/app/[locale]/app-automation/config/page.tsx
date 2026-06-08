@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Card, Table, Button, message, Modal, Form, Input, InputNumber, Space } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -7,6 +8,7 @@ import { getAppConfigs, createAppConfig, updateAppConfig, deleteAppConfig } from
 import type { AppConfig } from '@/lib/api/app-automation';
 
 export default function ConfigPage() {
+  const t = useTranslations();
   const [configs, setConfigs] = useState<AppConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -18,7 +20,7 @@ export default function ConfigPage() {
     try {
       const res = await getAppConfigs();
       setConfigs(res.data || []);
-    } catch { message.error('加载失败'); }
+    } catch { message.error(t('common.loadFailed')); }
     finally { setLoading(false); }
   };
 
@@ -27,10 +29,10 @@ export default function ConfigPage() {
   const handleSubmit = async () => {
     const values = await form.validateFields();
     try {
-      if (editing) { await updateAppConfig(editing.id, values); message.success('更新成功'); }
-      else { await createAppConfig(values); message.success('创建成功'); }
+      if (editing) { await updateAppConfig(editing.id, values); message.success(t('common.updateSuccess')); }
+      else { await createAppConfig(values); message.success(t('common.createSuccess')); }
       setModalOpen(false); setEditing(null); form.resetFields(); loadConfigs();
-    } catch { message.error('操作失败'); }
+    } catch { message.error(t('common.operationFailed')); }
   };
 
   return (
@@ -39,22 +41,22 @@ export default function ConfigPage() {
         <Space>
           <Button type="primary" icon={<PlusOutlined />}
             onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}
-          >新增环境配置</Button>
+          >{t('appAutomation.environment.create')}</Button>
         </Space>
       </div>
 
       <Table rowKey="id" loading={loading} dataSource={configs} size="small" pagination={false}
         columns={[
-          { title: '名称', dataIndex: 'name', width: 160 },
-          { title: 'ADB 路径', dataIndex: 'adb_path', width: 200 },
-          { title: '设备超时(秒)', dataIndex: 'device_timeout', width: 120 },
-          { title: '截图目录', dataIndex: 'screenshot_dir', width: 200 },
+          { title: t('common.name'), dataIndex: 'name', width: 160 },
+          { title: t('appAutomation.adbPath'), dataIndex: 'adb_path', width: 200 },
+          { title: t('appAutomation.deviceTimeout'), dataIndex: 'device_timeout', width: 120 },
+          { title: t('appAutomation.screenshotDir'), dataIndex: 'screenshot_dir', width: 200 },
           {
-            title: '创建时间', dataIndex: 'created_at', width: 170,
+            title: t('common.createdAt'), dataIndex: 'created_at', width: 170,
             render: (v: string) => v ? new Date(v).toLocaleString('zh-CN') : '-',
           },
           {
-            title: '操作', width: 100,
+            title: t('common.action'), width: 100,
             render: (_, record) => (
               <Space>
                 <Button type="link" size="small" icon={<EditOutlined />}
@@ -62,8 +64,8 @@ export default function ConfigPage() {
                 />
                 <Button type="link" danger size="small" icon={<DeleteOutlined />}
                   onClick={async () => {
-                    try { await deleteAppConfig(record.id); message.success('已删除'); loadConfigs(); }
-                    catch { message.error('删除失败'); }
+                    try { await deleteAppConfig(record.id); message.success(t('common.deleted')); loadConfigs(); }
+                    catch { message.error(t('common.deleteFailed')); }
                   }}
                 />
               </Space>
@@ -72,21 +74,21 @@ export default function ConfigPage() {
         ]}
       />
 
-      <Modal title={editing ? '编辑环境配置' : '新增环境配置'} open={modalOpen}
+      <Modal title={editing ? t('appAutomation.editEnvironment') : t('appAutomation.environment.create')} open={modalOpen}
         onOk={handleSubmit} onCancel={() => { setModalOpen(false); setEditing(null); }}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="配置名称" rules={[{ required: true }]}>
-            <Input placeholder="如 测试环境配置" />
+          <Form.Item name="name" label={t('common.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('appAutomation.environment.namePlaceholder')} />
           </Form.Item>
-          <Form.Item name="adb_path" label="ADB 路径" initialValue="adb">
-            <Input placeholder="adb 命令路径" />
+          <Form.Item name="adb_path" label={t('appAutomation.adbPath')} initialValue="adb">
+            <Input placeholder={t('appAutomation.adbPathPlaceholder')} />
           </Form.Item>
-          <Form.Item name="device_timeout" label="设备超时(秒)" initialValue={30}>
+          <Form.Item name="device_timeout" label={t('appAutomation.deviceTimeout')} initialValue={30}>
             <InputNumber min={5} max={300} />
           </Form.Item>
-          <Form.Item name="screenshot_dir" label="截图目录" initialValue="screenshots">
-            <Input placeholder="截图保存目录" />
+          <Form.Item name="screenshot_dir" label={t('appAutomation.screenshotDir')} initialValue="screenshots">
+            <Input placeholder={t('appAutomation.screenshotDirPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>

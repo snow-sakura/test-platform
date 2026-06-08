@@ -5,6 +5,7 @@ import {
   Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined, PauseCircleOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import type { ColumnsType } from 'antd/es/table';
 import {
   getScheduledTasks, createScheduledTask, updateScheduledTask,
@@ -13,8 +14,10 @@ import {
 } from '@/lib/api/api-testing';
 import type { ApiScheduledTask } from '@/lib/api/api-testing';
 
-/** 定时任务管理页面 */
+/** Scheduled task management page */
 export default function ScheduledTasksPage() {
+  const t = useTranslations('apiTesting');
+  const tc = useTranslations('common');
   const [tasks, setTasks] = useState<ApiScheduledTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -43,7 +46,7 @@ export default function ScheduledTasksPage() {
       } else {
         await createScheduledTask(values);
       }
-      message.success('保存成功');
+      message.success(t('scheduledTask.saveSuccess'));
       setModalOpen(false);
       fetchData();
     } catch (err: any) {
@@ -52,54 +55,54 @@ export default function ScheduledTasksPage() {
   };
 
   const columns: ColumnsType<ApiScheduledTask> = [
-    { title: '任务名称', dataIndex: 'name', key: 'name' },
+    { title: t('scheduledTask.name'), dataIndex: 'name', key: 'name' },
     {
-      title: '类型', dataIndex: 'task_type', key: 'task_type', width: 100,
-      render: (v: string) => <Tag>{v === 'suite' ? '套件' : '请求'}</Tag>,
+      title: tc('type'), dataIndex: 'task_type', key: 'task_type', width: 100,
+      render: (v: string) => <Tag>{v === 'suite' ? t('scheduledTask.suite') : t('scheduledTask.request')}</Tag>,
     },
-    { title: 'Cron 表达式', dataIndex: 'cron_expression', key: 'cron_expression', width: 150 },
+    { title: t('scheduledTask.cron'), dataIndex: 'cron_expression', key: 'cron_expression', width: 150 },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 100,
+      title: tc('status'), dataIndex: 'status', key: 'status', width: 100,
       render: (v: string) => (
         <Tag color={v === 'active' ? 'success' : 'default'}>
-          {v === 'active' ? '运行中' : '已暂停'}
+          {v === 'active' ? t('scheduledTask.running') : t('scheduledTask.paused')}
         </Tag>
       ),
     },
-    { title: '上次执行', dataIndex: 'last_executed_at', key: 'last_executed_at', width: 180 },
-    { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 180 },
+    { title: t('scheduledTask.lastRun'), dataIndex: 'last_executed_at', key: 'last_executed_at', width: 180 },
+    { title: tc('createdAt'), dataIndex: 'created_at', key: 'created_at', width: 180 },
     {
-      title: '操作', key: 'actions', width: 250,
+      title: tc('action'), key: 'actions', width: 250,
       render: (_, record) => (
         <Space>
           {record.status === 'active' ? (
             <Button type="link" size="small" icon={<PauseCircleOutlined />} onClick={async () => {
               await pauseScheduledTask(record.id);
-              message.success('已暂停');
+              message.success(t('scheduledTask.pause'));
               fetchData();
-            }}>暂停</Button>
+            }}>{t('scheduledTask.pause')}</Button>
           ) : (
             <Button type="link" size="small" icon={<PlayCircleOutlined />} onClick={async () => {
               await resumeScheduledTask(record.id);
-              message.success('已恢复');
+              message.success(t('scheduledTask.resume'));
               fetchData();
-            }}>恢复</Button>
+            }}>{t('scheduledTask.resume')}</Button>
           )}
           <Button type="link" size="small" onClick={async () => {
             await runScheduledTaskNow(record.id);
-            message.success('已触发执行');
-          }}>立即执行</Button>
+            message.success(t('scheduledTask.executeNow'));
+          }}>{t('scheduledTask.executeNow')}</Button>
           <Button type="link" size="small" onClick={() => {
             setEditRecord(record);
             form.setFieldsValue(record);
             setModalOpen(true);
-          }}>编辑</Button>
-          <Popconfirm title="确定删除？" onConfirm={async () => {
+          }}>{tc('edit')}</Button>
+          <Popconfirm title={t('scheduledTask.deleteConfirm')} onConfirm={async () => {
             await deleteScheduledTask(record.id);
-            message.success('已删除');
+            message.success(t('scheduledTask.deleted'));
             fetchData();
           }}>
-            <Button type="link" danger size="small">删除</Button>
+            <Button type="link" danger size="small">{tc('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -114,7 +117,7 @@ export default function ScheduledTasksPage() {
           form.resetFields();
           setModalOpen(true);
         }}>
-          新建定时任务
+          {t('scheduledTask.create')}
         </Button>
       </div>
 
@@ -127,24 +130,24 @@ export default function ScheduledTasksPage() {
       />
 
       <Modal
-        title={editRecord ? '编辑定时任务' : '新建定时任务'}
+        title={editRecord ? t('scheduledTask.edit') : t('scheduledTask.create')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="任务名称" rules={[{ required: true }]}>
-            <Input placeholder="如：每日回归测试" />
+          <Form.Item name="name" label={t('scheduledTask.name')} rules={[{ required: true }]}>
+            <Input placeholder={tc('inputPlaceholder')} />
           </Form.Item>
-          <Form.Item name="task_type" label="任务类型" initialValue="suite">
+          <Form.Item name="task_type" label={tc('type')} initialValue="suite">
             <Select>
-              <Select.Option value="suite">套件执行</Select.Option>
-              <Select.Option value="request">单请求</Select.Option>
+              <Select.Option value="suite">{t('scheduledTask.suiteExec')}</Select.Option>
+              <Select.Option value="request">{t('scheduledTask.singleRequest')}</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="cron_expression" label="Cron 表达式" rules={[{ required: true }]}
+          <Form.Item name="cron_expression" label={t('scheduledTask.cron')} rules={[{ required: true }]}
             initialValue="0 9 * * 1-5"
-            help="格式: 分 时 日 月 周（如 0 9 * * 1-5 表示工作日每天9点）"
+            help={t('scheduledTask.cron') + ': ' + 'min hour day month weekday (e.g. 0 9 * * 1-5 = weekdays at 9am)'}
           >
             <Input placeholder="0 9 * * 1-5" />
           </Form.Item>

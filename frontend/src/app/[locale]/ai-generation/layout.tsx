@@ -6,17 +6,19 @@ import {
   DashboardOutlined, FileTextOutlined, UnorderedListOutlined,
   RobotOutlined, EditOutlined, SettingOutlined,
 } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 
 export default function AiGenerationLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('aiGeneration');
   const pathname = usePathname();
   const router = useRouter();
 
   const tabs = [
-    { key: '/ai-generation/requirement-analysis', icon: <DashboardOutlined />, label: '需求导入与分析' },
-    { key: '/ai-generation/generated-cases', icon: <UnorderedListOutlined />, label: '生成任务列表' },
-    { key: '/ai-generation/ai-model-config', icon: <RobotOutlined />, label: '模型配置' },
-    { key: '/ai-generation/prompt-config', icon: <EditOutlined />, label: '提示词配置' },
-    { key: '/ai-generation/generation-config', icon: <SettingOutlined />, label: '生成行为配置' },
+    { key: '/ai-generation/requirement-analysis', icon: <DashboardOutlined />, label: t('layout.requirementAnalysis') },
+    { key: '/ai-generation/generated-cases', icon: <UnorderedListOutlined />, label: t('layout.taskList') },
+    { key: '/ai-generation/ai-model-config', icon: <RobotOutlined />, label: t('layout.modelConfig') },
+    { key: '/ai-generation/prompt-config', icon: <EditOutlined />, label: t('layout.promptConfig') },
+    { key: '/ai-generation/generation-config', icon: <SettingOutlined />, label: t('layout.generationConfig') },
   ];
 
   const currentTab = '/' + pathname.split('/').filter(Boolean).slice(1).join('/');

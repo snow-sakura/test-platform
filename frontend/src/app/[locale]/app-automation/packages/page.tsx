@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Space, Tag, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -9,6 +10,7 @@ import {
 import type { AppProject, AppPackage } from '@/lib/api/app-automation';
 
 export default function PackagesPage() {
+  const t = useTranslations();
   const [projects, setProjects] = useState<AppProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<number | undefined>();
   const [packages, setPackages] = useState<AppPackage[]>([]);
@@ -22,14 +24,14 @@ export default function PackagesPage() {
       const list = r.data.results || [];
       setProjects(list);
       if (list.length > 0) setSelectedProject(list[0].id);
-    }).catch(() => message.error('加载项目列表失败'));
+    }).catch(() => message.error(t('common.loadFailed')));
   }, []);
 
   useEffect(() => {
     if (!selectedProject) { setPackages([]); return; }
     setLoading(true);
     getAppPackages(selectedProject).then((r) => setPackages(r.data || []))
-      .catch(() => message.error('加载包列表失败'))
+      .catch(() => message.error(t('common.loadFailed')))
       .finally(() => setLoading(false));
   }, [selectedProject]);
 
@@ -38,10 +40,10 @@ export default function PackagesPage() {
     try {
       if (editing) {
         await updateAppPackage(editing.id, values);
-        message.success('更新成功');
+        message.success(t('common.updateSuccess'));
       } else {
         await createAppPackage({ ...values, project_id: selectedProject });
-        message.success('创建成功');
+        message.success(t('common.createSuccess'));
       }
       setModalOpen(false);
       setEditing(null);
@@ -51,20 +53,20 @@ export default function PackagesPage() {
         setPackages(res.data || []);
       }
     } catch {
-      message.error('操作失败');
+      message.error(t('common.operationFailed'));
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await deleteAppPackage(id);
-      message.success('已删除');
+      message.success(t('common.deleted'));
       if (selectedProject) {
         const res = await getAppPackages(selectedProject);
         setPackages(res.data || []);
       }
     } catch {
-      message.error('删除失败');
+      message.error(t('common.deleteFailed'));
     }
   };
 
@@ -88,26 +90,26 @@ export default function PackagesPage() {
           onChange={setSelectedProject}
           options={projects.map((p) => ({ label: p.name, value: p.id }))}
           style={{ width: 240 }}
-          placeholder="选择项目"
+          placeholder={t('common.selectProject')}
         />
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!selectedProject}>
-          添加应用包
+          {t('appAutomation.packages.addPackage')}
         </Button>
       </Space>
 
       <Table rowKey="id" loading={loading} dataSource={packages} size="small"
         columns={[
-          { title: '包名', dataIndex: 'package_name', width: 200 },
-          { title: '应用名称', dataIndex: 'app_name', width: 160 },
-          { title: '主 Activity', dataIndex: 'main_activity', width: 200, ellipsis: true },
-          { title: '版本', dataIndex: 'version', width: 100 },
-          { title: '描述', dataIndex: 'description', ellipsis: true },
+          { title: t('appAutomation.packages.packageName'), dataIndex: 'package_name', width: 200 },
+          { title: t('appAutomation.packages.appName'), dataIndex: 'app_name', width: 160 },
+          { title: t('appAutomation.packages.mainActivity'), dataIndex: 'main_activity', width: 200, ellipsis: true },
+          { title: t('appAutomation.packages.version'), dataIndex: 'version', width: 100 },
+          { title: t('common.description'), dataIndex: 'description', ellipsis: true },
           {
-            title: '操作', width: 120, fixed: 'right' as const,
+            title: t('common.action'), width: 120, fixed: 'right' as const,
             render: (_: unknown, record: AppPackage) => (
               <Space>
-                <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
-                <Button size="small" icon={<DeleteOutlined />} danger onClick={() => handleDelete(record.id)}>删除</Button>
+                <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>{t('common.edit')}</Button>
+                <Button size="small" icon={<DeleteOutlined />} danger onClick={() => handleDelete(record.id)}>{t('common.delete')}</Button>
               </Space>
             ),
           },
@@ -115,27 +117,27 @@ export default function PackagesPage() {
       />
 
       <Modal
-        title={editing ? '编辑应用包' : '添加应用包'}
+        title={editing ? t('appAutomation.packages.editPackage') : t('appAutomation.packages.addPackage')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => { setModalOpen(false); setEditing(null); }}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="package_name" label="包名" rules={[{ required: true, message: '请输入包名' }]}>
+          <Form.Item name="package_name" label={t('appAutomation.packages.packageName')} rules={[{ required: true, message: t('appAutomation.packages.packageNameRequired') }]}>
             <Input placeholder="com.example.app" />
           </Form.Item>
-          <Form.Item name="app_name" label="应用名称" rules={[{ required: true, message: '请输入应用名称' }]}>
-            <Input placeholder="应用名称" />
+          <Form.Item name="app_name" label={t('appAutomation.packages.appName')} rules={[{ required: true, message: t('appAutomation.packages.appNameRequired') }]}>
+            <Input placeholder={t('appAutomation.packages.appName')} />
           </Form.Item>
-          <Form.Item name="main_activity" label="主 Activity">
+          <Form.Item name="main_activity" label={t('appAutomation.packages.mainActivity')}>
             <Input placeholder=".MainActivity" />
           </Form.Item>
-          <Form.Item name="version" label="版本">
+          <Form.Item name="version" label={t('appAutomation.packages.version')}>
             <Input placeholder="1.0.0" />
           </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={3} placeholder="可选描述" />
+          <Form.Item name="description" label={t('common.description')}>
+            <Input.TextArea rows={3} placeholder={t('common.description')} />
           </Form.Item>
         </Form>
       </Modal>

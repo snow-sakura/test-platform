@@ -8,16 +8,22 @@ import {
 import {
   ArrowLeftOutlined, ReloadOutlined, StopOutlined, SaveOutlined,
 } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import { getTask, cancelTask, saveTaskToLibrary, type TaskDetail } from '@/lib/api/requirement-analysis';
 
 const { Title, Text } = Typography;
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  pending: { color: 'default', label: '等待中' }, generating: { color: 'processing', label: '生成中' },
-  reviewing: { color: 'processing', label: '评审中' }, revising: { color: 'processing', label: '修订中' },
-  completed: { color: 'success', label: '已完成' }, failed: { color: 'error', label: '失败' }, cancelled: { color: 'warning', label: '已取消' },
+const getStatusLabel = (status: string, t: any) => {
+  const map: Record<string, string> = {
+    pending: t('taskDetail.waiting'), generating: t('taskDetail.generating'),
+    reviewing: t('taskDetail.reviewing'), revising: t('taskDetail.revising'),
+    completed: t('taskDetail.completed'), failed: t('taskDetail.failed'), cancelled: t('taskDetail.cancelled'),
+  };
+  return map[status] || status;
 };
 
 export default function TaskDetailPage() {
+  const t = useTranslations('aiGeneration');
+  const tc = useTranslations('common');
   const params = useParams();
   const router = useRouter();
   const taskId = params.id as string;
@@ -32,7 +38,7 @@ export default function TaskDetailPage() {
       const res = await getTask(taskId);
       setTask(res.data);
       if (res.data.stream_buffer) setStreamContent(res.data.stream_buffer);
-    } catch { message.error('加载任务详情失败'); }
+    } catch { message.error(t('taskDetail.loadFailed')); }
     setLoading(false);
   };
 
@@ -57,10 +63,10 @@ export default function TaskDetailPage() {
   useEffect(() => { if (contentRef.current) contentRef.current.scrollTop = contentRef.current.scrollHeight; }, [streamContent]);
 
   const handleCancel = async () => {
-    try { await cancelTask(taskId); message.success('任务已取消'); loadTask(); } catch (e: any) { message.error(e?.response?.data?.detail || '取消失败'); }
+    try { await cancelTask(taskId); message.success(t('taskDetail.cancelled')); loadTask(); } catch (e: any) { message.error(e?.response?.data?.detail || t('taskDetail.cancelFailed')); }
   };
   const handleSave = async () => {
-    try { const res = await saveTaskToLibrary(taskId); message.success(res.data.message); loadTask(); } catch (e: any) { message.error(e?.response?.data?.detail || '保存失败'); }
+    try { const res = await saveTaskToLibrary(taskId); message.success(res.data.message); loadTask(); } catch (e: any) { message.error(e?.response?.data?.detail || t('taskDetail.saveFailed')); }
   };
 
   const parseCases = (content: string | null | undefined) => {
@@ -76,24 +82,25 @@ export default function TaskDetailPage() {
     });
   };
 
-  if (loading && !task) return <Spin tip="加载中..." style={{ display: 'block', marginTop: 80 }} />;
-  if (!task) return <Alert type="error" message="任务不存在" />;
+  if (loading && !task) return <Spin tip={tc('loading')} style={{ display: 'block', marginTop: 80 }} />;
+  if (!task) return <Alert type="error" message={t('taskDetail.notFound')} />;
 
-  const si = STATUS_MAP[task.status] || { color: 'default', label: task.status };
+  const currentStatusLabel = getStatusLabel(task.status, t);
+  const statusColors: Record<string, string> = { pending: 'default', generating: 'processing', reviewing: 'processing', revising: 'processing', completed: 'success', failed: 'error', cancelled: 'warning' };
   const running = ['generating', 'reviewing', 'revising'].includes(task.status);
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => router.push('/ai-generation/generated-cases')}>返回</Button>
-          <Title level={4} style={{ margin: 0 }}>任务 {task.task_id}</Title>
-          <Tag color={si.color}>{si.label}</Tag>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => router.push('/ai-generation/generated-cases')}>{t('taskDetail.back')}</Button>
+          <Title level={4} style={{ margin: 0 }}>{t('taskDetail.title')} {task.task_id}</Title>
+          <Tag color={statusColors[task.status] || 'default'}>{currentStatusLabel}</Tag>
         </Space>
         <Space>
-          {running && <Button danger icon={<StopOutlined />} onClick={handleCancel}>取消</Button>}
-          {!running && <Button icon={<ReloadOutlined />} onClick={loadTask}>刷新</Button>}
-          {task.status === 'completed' && !task.is_saved_to_records && <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>保存到用例库</Button>}
+          {running && <Button danger icon={<StopOutlined />} onClick={handleCancel}>{t('taskDetail.cancel')}</Button>}
+          {!running && <Button icon={<ReloadOutlined />} onClick={loadTask}>{t('taskDetail.refresh')}</Button>}
+          {task.status === 'completed' && !task.is_saved_to_records && <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>{t('taskDetail.saveToCaseLib')}</Button>}
         </Space>
       </div>
       <Card size="small" style={{ marginBottom: 16 }}>
@@ -101,28 +108,28 @@ export default function TaskDetailPage() {
           <Progress type="circle" percent={task.progress} size={60} status={task.status === 'failed' ? 'exception' : undefined} />
           <Steps size="small" current={task.status === 'pending' ? 0 : task.status === 'generating' ? 1 : task.status === 'reviewing' ? 2 : task.status === 'revising' ? 3 : 4}
             status={task.status === 'failed' ? 'error' : task.status === 'cancelled' ? 'wait' : 'process'}
-            items={[{ title: '准备' }, { title: '生成' }, { title: '评审' }, { title: '修订' }, { title: '完成' }]} style={{ flex: 1 }} />
+            items={[{ title: t('taskDetail.prepare') }, { title: t('taskDetail.generate') }, { title: t('taskDetail.review') }, { title: t('taskDetail.revise') }, { title: t('taskDetail.complete') }]} style={{ flex: 1 }} />
         </div>
         {task.error_message && <Alert type="error" message={task.error_message} style={{ marginTop: 12 }} showIcon />}
       </Card>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 400 }}>
-          <Card title="生成内容" size="small">
+          <Card title={t('taskDetail.content')} size="small">
             <div ref={contentRef} style={{ maxHeight: 500, overflow: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13, background: '#fafafa', padding: 12, borderRadius: 4 }}>
-              {streamContent || task.generated_content || '暂无生成内容'}
+              {streamContent || task.generated_content || t('taskDetail.noContent')}
             </div>
           </Card>
           {task.review_feedback && (
-            <Card title="AI 评审反馈" size="small" style={{ marginTop: 16 }}>
+            <Card title={t('taskDetail.reviewFeedback')} size="small" style={{ marginTop: 16 }}>
               <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13 }}>{task.review_feedback}</div>
             </Card>
           )}
         </div>
         <div style={{ flex: 1, minWidth: 400 }}>
-          <Card title="最终用例" size="small">
+          <Card title={t('taskDetail.finalCases')} size="small">
             {(() => {
               const rows = parseCases(task.final_test_cases);
-              if (rows.length === 0) return <Text type="secondary">暂无最终用例</Text>;
+              if (rows.length === 0) return <Text type="secondary">{t('taskDetail.noFinalCases')}</Text>;
               const cols = Object.keys(rows[0] || {});
               return (
                 <div style={{ overflowX: 'auto' }}>

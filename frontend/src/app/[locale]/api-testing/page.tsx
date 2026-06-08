@@ -5,11 +5,13 @@ import { Card, Col, Row, Statistic } from 'antd';
 import {
   ApiOutlined, FileTextOutlined, ThunderboltOutlined, HistoryOutlined,
 } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import { getDashboardStats } from '@/lib/api/api-testing';
 import type { DashboardStats } from '@/lib/api/api-testing';
 
-/** 接口测试仪表盘页面 */
+/** API testing dashboard page */
 export default function ApiTestingDashboardPage() {
+  const t = useTranslations('apiTesting');
   const [stats, setStats] = useState<DashboardStats>({
     project_count: 0, request_count: 0, suite_count: 0, today_executions: 0,
   });
@@ -23,26 +25,26 @@ export default function ApiTestingDashboardPage() {
 
   return (
     <div>
-      <h3 style={{ marginBottom: 16 }}>接口测试仪表盘</h3>
+      <h3 style={{ marginBottom: 16 }}>{t('dashboard')}</h3>
       <Row gutter={16}>
         <Col span={6}>
           <Card loading={loading}>
-            <Statistic title="API 项目" value={stats.project_count} prefix={<ApiOutlined />} />
+            <Statistic title={t('stats.projects')} value={stats.project_count} prefix={<ApiOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
           <Card loading={loading}>
-            <Statistic title="接口总数" value={stats.request_count} prefix={<FileTextOutlined />} />
+            <Statistic title={t('stats.interfaces')} value={stats.request_count} prefix={<FileTextOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
           <Card loading={loading}>
-            <Statistic title="测试套件" value={stats.suite_count} prefix={<ThunderboltOutlined />} />
+            <Statistic title={t('stats.suites')} value={stats.suite_count} prefix={<ThunderboltOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
           <Card loading={loading}>
-            <Statistic title="今日执行" value={stats.today_executions} prefix={<HistoryOutlined />} />
+            <Statistic title={t('stats.todayExecutions')} value={stats.today_executions} prefix={<HistoryOutlined />} />
           </Card>
         </Col>
       </Row>

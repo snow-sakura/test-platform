@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Layout, List, Typography, Input, Button, message, Popconfirm, Badge, Spin, Empty,
@@ -17,6 +18,7 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 export default function AIEvaluatorPage() {
+  const t = useTranslations();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,7 +30,7 @@ export default function AIEvaluatorPage() {
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 加载会话列表
+  // load sessions
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
     try {
@@ -45,12 +47,12 @@ export default function AIEvaluatorPage() {
     loadSessions();
   }, [loadSessions]);
 
-  // 滚动到底部
+  // scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
-  // 切换会话，加载消息
+  // switch session and load messages
   const switchSession = async (session: Session) => {
     if (sending) return;
     setActiveSession(session);
@@ -66,7 +68,7 @@ export default function AIEvaluatorPage() {
     }
   };
 
-  // 新建会话
+  // create session
   const handleCreate = async () => {
     try {
       const res = await createSession();
@@ -76,11 +78,11 @@ export default function AIEvaluatorPage() {
       setMessages([]);
       setStreamingText('');
     } catch {
-      message.error('创建会话失败');
+      message.error(t('aiEvaluator.createFailed'));
     }
   };
 
-  // 删除会话
+  // delete session
   const handleDelete = async (session: Session) => {
     try {
       await deleteSession(session.session_id);
@@ -91,11 +93,11 @@ export default function AIEvaluatorPage() {
         setStreamingText('');
       }
     } catch {
-      message.error('删除会话失败');
+      message.error(t('aiEvaluator.deleteFailed'));
     }
   };
 
-  // 发送消息
+  // send message
   const handleSend = async () => {
     const query = input.trim();
     if (!query || !activeSession || sending) return;
@@ -104,7 +106,7 @@ export default function AIEvaluatorPage() {
     setSending(true);
     setStreamingText('');
 
-    // 添加用户消息到界面
+    // add user message to UI
     const userMsg: Message = {
       id: Date.now(),
       session_id: activeSession.id,
@@ -114,7 +116,7 @@ export default function AIEvaluatorPage() {
     };
     setMessages((prev) => [...prev, userMsg]);
 
-    // 占位 AI 回复
+    // placeholder AI reply
     const aiMsg: Message = {
       id: Date.now() + 1,
       session_id: activeSession.id,
@@ -145,16 +147,16 @@ export default function AIEvaluatorPage() {
         setStreamingText('');
         setSending(false);
         abortRef.current = null;
-        // 刷新会话列表（更新标题）
+        // refresh session list (update title)
         loadSessions();
       },
       (err) => {
-        message.error(`请求失败: ${err}`);
+        message.error(t('aiEvaluator.requestFailed', { error: String(err) }));
         setMessages((prev) => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === 'assistant') {
-            last.content = fullAnswer || '服务暂时不可用，请稍后重试';
+            last.content = fullAnswer || t('aiEvaluator.serviceUnavailable');
           }
           return updated;
         });
@@ -165,7 +167,7 @@ export default function AIEvaluatorPage() {
     );
   };
 
-  // 停止生成
+  // stop generation
   const handleStop = () => {
     abortRef.current?.abort();
     setSending(false);
@@ -181,20 +183,20 @@ export default function AIEvaluatorPage() {
 
   return (
     <Layout style={{ height: 'calc(100vh - 140px)', background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
-      {/* 左侧会话列表 */}
+      {/* left session list */}
       <Sider
         width={280}
         style={{ background: '#fafafa', borderRight: '1px solid #f0f0f0', overflow: 'auto' }}
       >
         <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0' }}>
           <Button type="primary" block icon={<PlusOutlined />} onClick={handleCreate}>
-            新建对话
+            {t('aiEvaluator.newChat')}
           </Button>
         </div>
         <List
           loading={loadingSessions}
           dataSource={sessions}
-          locale={{ emptyText: <Empty description="暂无对话" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+          locale={{ emptyText: <Empty description={t('aiEvaluator.noChat')} image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           renderItem={(item) => (
             <List.Item
               onClick={() => switchSession(item)}
@@ -206,7 +208,7 @@ export default function AIEvaluatorPage() {
               actions={[
                 <Popconfirm
                   key="delete"
-                  title="确认删除此对话？"
+                  title={t('aiEvaluator.deleteConfirm')}
                   onConfirm={() => handleDelete(item)}
                 >
                   <Button
@@ -223,12 +225,12 @@ export default function AIEvaluatorPage() {
                 avatar={<MessageOutlined style={{ fontSize: 16, color: '#999' }} />}
                 title={
                   <Text ellipsis style={{ maxWidth: 160 }}>
-                    {item.title || '新对话'}
+                    {item.title || t('aiEvaluator.newChatBtn')}
                   </Text>
                 }
                 description={
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {item.message_count} 条消息
+                    {item.message_count} {t('aiEvaluator.messageCount')}
                   </Text>
                 }
               />
@@ -237,15 +239,15 @@ export default function AIEvaluatorPage() {
         />
       </Sider>
 
-      {/* 右侧聊天区 */}
+      {/* right chat area */}
       <Content style={{ display: 'flex', flexDirection: 'column' }}>
         {!activeSession ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Empty description="选择或创建一个对话开始使用 AI 评测师" />
+            <Empty description={t('aiEvaluator.selectChat')} />
           </div>
         ) : (
           <>
-            {/* 消息列表 */}
+            {/* messages */}
             <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
               {loadingMessages ? (
                 <div style={{ textAlign: 'center', paddingTop: 100 }}>
@@ -253,8 +255,8 @@ export default function AIEvaluatorPage() {
                 </div>
               ) : messages.length === 0 && !streamingText ? (
                 <div style={{ textAlign: 'center', paddingTop: 100 }}>
-                  <Title level={4} type="secondary">开始与 AI 评测师对话</Title>
-                  <Text type="secondary">输入您的测试问题或需求，AI 将为您提供专业的测试建议</Text>
+                  <Title level={4} type="secondary">{t('aiEvaluator.startChat')}</Title>
+                  <Text type="secondary">{t('aiEvaluator.chatHint')}</Text>
                 </div>
               ) : (
                 messages.map((msg, idx) => {
@@ -293,19 +295,19 @@ export default function AIEvaluatorPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* 输入区 */}
+            {/* input area */}
             <div style={{ padding: '12px 24px', borderTop: '1px solid #f0f0f0' }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <TextArea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+                  placeholder={t('aiEvaluator.inputPlaceholder')}
                   rows={2}
                   disabled={sending}
                 />
                 {sending ? (
-                  <Button danger onClick={handleStop}>停止</Button>
+                  <Button danger onClick={handleStop}>{t('aiEvaluator.stop')}</Button>
                 ) : (
                   <Button
                     type="primary"
@@ -313,7 +315,7 @@ export default function AIEvaluatorPage() {
                     onClick={handleSend}
                     disabled={!input.trim()}
                   >
-                    发送
+                    {t('aiEvaluator.send')}
                   </Button>
                 )}
               </div>

@@ -63,8 +63,8 @@ export default function ProjectsPage() {
         <Tag color={statusColors[record.status] || 'default'}>{record.status_display}</Tag>
       ),
     },
-    { title: '创建者', dataIndex: 'creator_name', key: 'creator_name', width: 100 },
-    { title: '成员', dataIndex: 'member_count', key: 'member_count', width: 60 },
+    { title: t('common.creator'), dataIndex: 'creator_name', key: 'creator_name', width: 100 },
+    { title: t('project.members'), dataIndex: 'member_count', key: 'member_count', width: 60 },
     {
       title: t('project.description'),
       dataIndex: 'description',

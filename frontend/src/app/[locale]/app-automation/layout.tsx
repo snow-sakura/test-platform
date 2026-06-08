@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
 import { Tabs } from 'antd';
 import {
@@ -11,20 +12,21 @@ import {
 export default function AppAutomationLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations();
 
   const tabs = [
-    { key: '/app-automation', icon: <DashboardOutlined />, label: '仪表盘' },
-    { key: '/app-automation/projects', icon: <ProjectOutlined />, label: '项目' },
-    { key: '/app-automation/devices', icon: <MobileOutlined />, label: '设备管理' },
-    { key: '/app-automation/packages', icon: <DropboxOutlined />, label: '包管理' },
-    { key: '/app-automation/elements', icon: <AimOutlined />, label: '元素管理' },
-    { key: '/app-automation/scenes', icon: <FileTextOutlined />, label: '场景编排' },
-    { key: '/app-automation/suites', icon: <AppstoreOutlined />, label: '测试套件' },
-    { key: '/app-automation/executions', icon: <PlayCircleOutlined />, label: '执行记录' },
-    { key: '/app-automation/scheduled-tasks', icon: <ClockCircleOutlined />, label: '定时任务' },
-    { key: '/app-automation/reports', icon: <FileProtectOutlined />, label: '报告' },
-    { key: '/app-automation/notifications', icon: <BellOutlined />, label: '通知管理' },
-    { key: '/app-automation/config', icon: <SettingOutlined />, label: '环境配置' },
+    { key: '/app-automation', icon: <DashboardOutlined />, label: t('appAutomation.dashboard') },
+    { key: '/app-automation/projects', icon: <ProjectOutlined />, label: t('appAutomation.projects') },
+    { key: '/app-automation/devices', icon: <MobileOutlined />, label: t('appAutomation.devices') },
+    { key: '/app-automation/packages', icon: <DropboxOutlined />, label: t('appAutomation.packages') },
+    { key: '/app-automation/elements', icon: <AimOutlined />, label: t('appAutomation.elements') },
+    { key: '/app-automation/scenes', icon: <FileTextOutlined />, label: t('appAutomation.scenes') },
+    { key: '/app-automation/suites', icon: <AppstoreOutlined />, label: t('appAutomation.suites') },
+    { key: '/app-automation/executions', icon: <PlayCircleOutlined />, label: t('appAutomation.executions') },
+    { key: '/app-automation/scheduled-tasks', icon: <ClockCircleOutlined />, label: t('appAutomation.scheduledTasks') },
+    { key: '/app-automation/reports', icon: <FileProtectOutlined />, label: t('appAutomation.reports') },
+    { key: '/app-automation/notifications', icon: <BellOutlined />, label: t('appAutomation.notifications') },
+    { key: '/app-automation/config', icon: <SettingOutlined />, label: t('appAutomation.environments') },
   ];
 
   const currentTab = '/' + pathname.split('/').filter(Boolean).slice(1).join('/');

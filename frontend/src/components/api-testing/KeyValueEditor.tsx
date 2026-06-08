@@ -2,6 +2,7 @@
 
 import { Button, Input, Space } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 interface KeyValuePair {
@@ -17,7 +18,7 @@ interface Props {
   disabled?: boolean;
 }
 
-/** 键值对编辑器组件（用于请求头、URL参数、环境变量等） */
+/** Key-value pair editor (for headers, URL params, environment variables, etc.) */
 export default function KeyValueEditor({
   value = {},
   onChange,
@@ -25,6 +26,7 @@ export default function KeyValueEditor({
   valuePlaceholder = 'Value',
   disabled = false,
 }: Props) {
+  const tc = useTranslations('common');
   const [pairs, setPairs] = useState<KeyValuePair[]>([]);
 
   useEffect(() => {
@@ -88,7 +90,7 @@ export default function KeyValueEditor({
       ))}
       {!disabled && (
         <Button type="dashed" icon={<PlusOutlined />} onClick={handleAdd} size="small" style={{ marginTop: 4 }}>
-          添加
+          {tc('create')}
         </Button>
       )}
     </div>

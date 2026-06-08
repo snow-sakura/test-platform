@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Button, Table, Tag, Space, message, Modal, Form, Input, Select, Row, Col, Popconfirm, Switch,
 } from 'antd';
@@ -15,58 +16,59 @@ import type { ApiProject } from '@/lib/api/api-testing';
 import type { TestVersion } from '@/lib/api/test-management';
 
 export default function PlanListPage() {
+  const t = useTranslations();
   const router = useRouter();
   const locale = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'zh-cn';
 
-  // 项目列表
+  // Project list
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
 
-  // 版本映射
+  // Version mapping
   const [versions, setVersions] = useState<TestVersion[]>([]);
 
-  // 计划列表
+  // Plan list
   const [plans, setPlans] = useState<TestPlan[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
-  // 弹窗状态
+  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<TestPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
-  // 项目名称映射
+  // Project name mapping
   const projectMap = useMemo(() => {
     const map: Record<number, string> = {};
     projects.forEach((p) => { map[p.id] = p.name; });
     return map;
   }, [projects]);
 
-  // 版本名称映射
+  // Version name mapping
   const versionMap = useMemo(() => {
     const map: Record<number, string> = {};
     versions.forEach((v) => { map[v.id] = v.name; });
     return map;
   }, [versions]);
 
-  // 加载项目列表
+  // Load project list
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results || []);
-    }).catch((e) => console.warn('加载项目列表失败', e));
+    }).catch((e) => console.warn('Failed to load project list', e));
   }, []);
 
-  // 加载版本列表
+  // Load version list
   useEffect(() => {
     getVersions({ page_size: 100 }).then((res) => {
       setVersions(res.data.results || []);
-    }).catch((e) => console.warn('加载版本列表失败', e));
+    }).catch((e) => console.warn('Failed to load version list', e));
   }, []);
 
-  // 加载计划列表
+  // Load plan list
   const loadPlans = useCallback(async () => {
     if (!projectId) return;
     setLoading(true);
@@ -77,7 +79,7 @@ export default function PlanListPage() {
       setPlans(res.data.results || []);
       setTotal(res.data.count || 0);
     } catch {
-      message.error('加载失败');
+      message.error(t('testManagement.plan.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -87,7 +89,7 @@ export default function PlanListPage() {
     loadPlans();
   }, [loadPlans]);
 
-  // 打开新建弹窗
+  // Open create modal
   const handleOpenCreate = () => {
     setEditingPlan(null);
     form.resetFields();
@@ -95,7 +97,7 @@ export default function PlanListPage() {
     setModalOpen(true);
   };
 
-  // 打开编辑弹窗
+  // Open edit modal
   const handleOpenEdit = (record: TestPlan) => {
     setEditingPlan(record);
     form.setFieldsValue({
@@ -107,37 +109,37 @@ export default function PlanListPage() {
     setModalOpen(true);
   };
 
-  // 提交表单（新建/编辑）
+  // Submit form (create/edit)
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
       if (editingPlan) {
         await updatePlan(editingPlan.id, values);
-        message.success('更新成功');
+        message.success(t('testManagement.plan.updateSuccess'));
       } else {
         await createPlan(projectId!, values);
-        message.success('创建成功');
+        message.success(t('testManagement.plan.createSuccess'));
       }
       setModalOpen(false);
       form.resetFields();
       loadPlans();
     } catch (err: any) {
-      if (err?.errorFields) return; // 表单验证失败
-      message.error(editingPlan ? '更新失败' : '创建失败');
+      if (err?.errorFields) return; // Form validation failed
+      message.error(editingPlan ? t('testManagement.plan.updateFailed') : t('testManagement.plan.createFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // 删除计划
+  // Delete plan
   const handleDelete = async (id: number) => {
     try {
       await deletePlan(id);
-      message.success('已删除');
+      message.success(t('testManagement.plan.deleted'));
       loadPlans();
     } catch {
-      message.error('删除失败');
+      message.error(t('testManagement.plan.deleteFailed'));
     }
   };
 
@@ -146,40 +148,40 @@ export default function PlanListPage() {
       title: 'ID', dataIndex: 'id', key: 'id', width: 60,
     },
     {
-      title: '名称', dataIndex: 'name', key: 'name', ellipsis: true,
+      title: t('testManagement.plan.name'), dataIndex: 'name', key: 'name', ellipsis: true,
       render: (text: string, record) => (
         <a onClick={() => router.push(`/${locale}/test-management/plans/${record.id}`)}>{text}</a>
       ),
     },
     {
-      title: '项目', dataIndex: 'project_id', key: 'project_id', width: 120,
-      render: (v: number) => projectMap[v] || `项目#${v}`,
+      title: t('testManagement.plan.project'), dataIndex: 'project_id', key: 'project_id', width: 120,
+      render: (v: number) => projectMap[v] || `Project#${v}`,
     },
     {
-      title: '版本', dataIndex: 'version_id', key: 'version_id', width: 100,
-      render: (v: number | null | undefined) => (v ? (versionMap[v] || `版本#${v}`) : '-'),
+      title: t('testManagement.plan.version'), dataIndex: 'version_id', key: 'version_id', width: 100,
+      render: (v: number | null | undefined) => (v ? (versionMap[v] || `Version#${v}`) : '-'),
     },
     {
-      title: '状态', dataIndex: 'is_active', key: 'is_active', width: 80,
-      render: (v: boolean) => <Tag color={v ? 'success' : 'default'}>{v ? '激活' : '未激活'}</Tag>,
+      title: t('testManagement.plan.status'), dataIndex: 'is_active', key: 'is_active', width: 80,
+      render: (v: boolean) => <Tag color={v ? 'success' : 'default'}>{v ? t('testManagement.plan.active') : t('testManagement.plan.inactive')}</Tag>,
     },
     {
-      title: '运行次数', dataIndex: 'run_count', key: 'run_count', width: 90,
+      title: t('testManagement.plan.runCount'), dataIndex: 'run_count', key: 'run_count', width: 90,
     },
     {
-      title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 170,
+      title: t('common.createdAt'), dataIndex: 'created_at', key: 'created_at', width: 170,
     },
     {
-      title: '操作', key: 'action', width: 140,
+      title: t('common.action'), key: 'action', width: 140,
       render: (_, record) => (
         <Space>
           <Button type="link" size="small" icon={<EditOutlined />}
             onClick={() => handleOpenEdit(record)}
           >
-            编辑
+            {t('common.edit')}
           </Button>
-          <Popconfirm title="确定删除此计划？" onConfirm={() => handleDelete(record.id)}>
-            <Button type="link" danger size="small" icon={<DeleteOutlined />}>删除</Button>
+          <Popconfirm title={t('testManagement.plan.deleteConfirm')} onConfirm={() => handleDelete(record.id)}>
+            <Button type="link" danger size="small" icon={<DeleteOutlined />}>{t('common.delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -191,7 +193,7 @@ export default function PlanListPage() {
       <Row gutter={16} style={{ marginBottom: 16 }} align="middle">
         <Col span={6}>
           <Select
-            placeholder="请选择项目"
+            placeholder={t('common.selectProject')}
             style={{ width: '100%' }}
             value={projectId}
             onChange={(v) => { setProjectId(v); setPage(1); }}
@@ -202,7 +204,7 @@ export default function PlanListPage() {
         </Col>
         <Col span={6}>
           <Input
-            placeholder="搜索计划名称"
+            placeholder={t('testManagement.plan.searchPlaceholder')}
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -216,7 +218,7 @@ export default function PlanListPage() {
             disabled={!projectId}
             onClick={handleOpenCreate}
           >
-            新建计划
+            {t('testManagement.plan.create')}
           </Button>
         </Col>
       </Row>
@@ -229,14 +231,14 @@ export default function PlanListPage() {
         pagination={{
           current: page, total, pageSize: 20,
           onChange: (p) => setPage(p),
-          showTotal: (t) => `共 ${t} 条`,
+          showTotal: (totalCount) => t('common.totalCount', { count: totalCount }),
         }}
         size="small"
       />
 
-      {/* 新建/编辑弹窗 */}
+      {/* Create/Edit Modal */}
       <Modal
-        title={editingPlan ? '编辑计划' : '新建计划'}
+        title={editingPlan ? t('testManagement.plan.edit') : t('testManagement.plan.create')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
@@ -245,22 +247,22 @@ export default function PlanListPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="计划名称" rules={[{ required: true, message: '请输入计划名称' }]}>
-            <Input placeholder="计划名称" />
+          <Form.Item name="name" label={t('testManagement.plan.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('testManagement.plan.name')} />
           </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={3} placeholder="计划描述（可选）" />
+          <Form.Item name="description" label={t('testManagement.plan.description')}>
+            <Input.TextArea rows={3} placeholder={t('testManagement.plan.description')} />
           </Form.Item>
-          <Form.Item name="version_id" label="关联版本">
+          <Form.Item name="version_id" label={t('testManagement.plan.versionLabel')}>
             <Select
-              placeholder="选择版本（可选）"
+              placeholder={t('testManagement.plan.selectVersion')}
               allowClear
               options={versions.map((v) => ({ label: v.name, value: v.id }))}
             />
           </Form.Item>
           {editingPlan && (
-            <Form.Item name="is_active" label="状态" valuePropName="checked">
-              <Switch checkedChildren="激活" unCheckedChildren="未激活" />
+            <Form.Item name="is_active" label={t('testManagement.plan.status')} valuePropName="checked">
+              <Switch checkedChildren={t('testManagement.plan.active')} unCheckedChildren={t('testManagement.plan.inactive')} />
             </Form.Item>
           )}
         </Form>

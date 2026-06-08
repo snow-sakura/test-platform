@@ -24,7 +24,7 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
   const [form] = Form.useForm();
   const [users, setUsers] = useState<UserOption[]>([]);
 
-  // 加载用户列表用于成员选择
+  // Load users for member selection
   useEffect(() => {
     if (open) {
       request.get<{ id: number; username: string }[]>('/api/auth/users')
@@ -108,10 +108,10 @@ export default function ProjectFormModal({ open, project, onClose, onSuccess }: 
           <DatePicker style={{ width: '100%' }} />
         </Form.Item>
         {!project && (
-          <Form.Item name="member_ids" label="项目成员">
+          <Form.Item name="member_ids" label={t('project.projectMembers')}>
             <Select
               mode="multiple"
-              placeholder="选择项目成员（可选，创建者自动为管理员）"
+              placeholder={t('project.projectMembersPlaceholder')}
               options={users.map((u) => ({ label: u.username, value: u.id }))}
               filterOption
               showSearch

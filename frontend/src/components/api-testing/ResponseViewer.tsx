@@ -4,6 +4,7 @@ import { Tag, Tabs, Typography } from 'antd';
 import {
   CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined,
 } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 
 const { Text } = Typography;
 
@@ -15,8 +16,9 @@ interface Props {
   loading?: boolean;
 }
 
-/** HTTP 响应查看器：状态码 + 耗时 + 响应头 + 响应体（格式化 JSON） */
+/** HTTP response viewer: status code + elapsed + headers + body (formatted JSON) */
 export default function ResponseViewer({ statusCode, headers, body, elapsedMs, loading }: Props) {
+  const t = useTranslations('apiTesting');
   const isSuccess = statusCode >= 200 && statusCode < 300;
   const isRedirect = statusCode >= 300 && statusCode < 400;
   const isError = statusCode >= 400;
@@ -36,20 +38,20 @@ export default function ResponseViewer({ statusCode, headers, body, elapsedMs, l
   const tabItems = [
     {
       key: 'body',
-      label: '响应体',
+      label: t('response.title'),
       children: (
         <pre style={{
           maxHeight: 400, overflow: 'auto', background: '#f6f8fa',
           padding: 12, borderRadius: 4, fontSize: 13, whiteSpace: 'pre-wrap',
           wordBreak: 'break-all',
         }}>
-          <code>{loading ? '请求中...' : (body ? formatBody(body) : '(空响应体)')}</code>
+          <code>{loading ? t('response.loading') : (body ? formatBody(body) : `(${t('response.empty')})`)}</code>
         </pre>
       ),
     },
     {
       key: 'headers',
-      label: '响应头',
+      label: t('response.headers'),
       children: (
         <pre style={{
           maxHeight: 400, overflow: 'auto', background: '#f6f8fa',
@@ -73,7 +75,7 @@ export default function ResponseViewer({ statusCode, headers, body, elapsedMs, l
           </Text>
         )}
         {!statusCode && !loading && (
-          <Text type="warning">未执行</Text>
+          <Text type="warning">{t('response.notExecuted')}</Text>
         )}
       </div>
       <Tabs items={tabItems} size="small" />

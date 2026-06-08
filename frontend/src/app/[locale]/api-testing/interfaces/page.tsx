@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import { Select, message, Button, Modal, Input, Row, Col, Card } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useTranslations } from 'next-intl';
 import { getApiProjects, createRequest } from '@/lib/api/api-testing';
 import type { ApiProject } from '@/lib/api/api-testing';
 import CollectionTree from '@/components/api-testing/CollectionTree';
 import RequestEditor from '@/components/api-testing/RequestEditor';
 
-/** 接口管理核心页面：左集合树 + 右请求编辑器 + 响应区域 */
+/** Interface management core page: left collection tree + right request editor + response area */
 export default function InterfacesPage() {
+  const t = useTranslations('apiTesting');
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
@@ -17,19 +19,19 @@ export default function InterfacesPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newRequestName, setNewRequestName] = useState('');
 
-  // 加载项目列表
+  // Load project list
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results);
       if (res.data.results.length > 0 && !selectedProjectId) {
         setSelectedProjectId(res.data.results[0].id);
       }
-    }).catch((e) => console.warn('加载项目列表失败', e));
+    }).catch((e) => console.warn(t('project.loadProjectsFailed'), e));
   }, []);
 
   const handleCreateRequest = async () => {
     if (!selectedCollectionId || !newRequestName) {
-      message.warning('请先选择集合并输入请求名称');
+      message.warning(t('interface.nameRequired'));
       return;
     }
     try {
@@ -39,11 +41,11 @@ export default function InterfacesPage() {
         method: 'GET',
         url: '',
       });
-      message.success('请求创建成功');
+      message.success(t('interface.createSuccess'));
       setCreateModalOpen(false);
       setNewRequestName('');
     } catch {
-      message.error('创建失败');
+      message.error(t('interface.createFailed'));
     }
   };
 
@@ -60,7 +62,7 @@ export default function InterfacesPage() {
                 setSelectedRequestId(null);
               }}
               style={{ width: '100%' }}
-              placeholder="选择 API 项目"
+              placeholder={t('interface.selectProject')}
               options={projects.map((p) => ({ value: p.id, label: p.name }))}
             />
           }>
@@ -78,11 +80,11 @@ export default function InterfacesPage() {
         </Col>
         <Col span={18}>
           <Card size="small"
-            title={selectedRequestId ? '请求编辑器' : '请从左侧选择一个请求'}
+            title={selectedRequestId ? t('interface.editor') : t('interface.selectFromLeft')}
             extra={
               selectedCollectionId ? (
                 <Button type="link" icon={<PlusOutlined />} size="small" onClick={() => setCreateModalOpen(true)}>
-                  新建请求
+                  {t('interface.create')}
                 </Button>
               ) : null
             }
@@ -96,7 +98,7 @@ export default function InterfacesPage() {
       </Row>
 
       <Modal
-        title="新建请求"
+        title={t('interface.create')}
         open={createModalOpen}
         onOk={handleCreateRequest}
         onCancel={() => { setCreateModalOpen(false); setNewRequestName(''); }}
@@ -104,7 +106,7 @@ export default function InterfacesPage() {
         <Input
           value={newRequestName}
           onChange={(e) => setNewRequestName(e.target.value)}
-          placeholder="请输入请求名称"
+          placeholder={t('interface.name')}
         />
       </Modal>
     </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import {
   Table, Button, message, Modal, Form, Input, Select, Tree, Space, Card, Row, Col, Tag,
@@ -18,6 +19,7 @@ import type { DataNode } from 'antd/es/tree';
 const { TextArea } = Input;
 
 export default function UiElementsPage() {
+  const t = useTranslations();
   const [projects, setProjects] = useState<UiProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
   const [groups, setGroups] = useState<UiElementGroup[]>([]);
@@ -49,7 +51,7 @@ export default function UiElementsPage() {
     try {
       const res = await getUiElementGroups(selectedProjectId);
       setGroups(res.data || []);
-    } catch { message.error('加载分组失败'); }
+    } catch { message.error(t('uiAutomation.element.loadGroupsFailed')); }
   };
 
   const loadElements = async () => {
@@ -58,7 +60,7 @@ export default function UiElementsPage() {
     try {
       const res = await getUiElements({ project_id: selectedProjectId, group_id: selectedGroupId });
       setElements(res.data.results || []);
-    } catch { message.error('加载元素失败'); }
+    } catch { message.error(t('uiAutomation.element.loadElementsFailed')); }
     finally { setLoading(false); }
   };
 
@@ -67,12 +69,12 @@ export default function UiElementsPage() {
     try {
       const res = await getUiPageObjects({ project_id: selectedProjectId, page_size: 100 });
       setPageObjects(res.data.results || []);
-    } catch { message.error('加载页面对象失败'); }
+    } catch { message.error(t('uiAutomation.element.loadPageObjectsFailed')); }
   };
 
   useEffect(() => { loadGroups(); loadElements(); loadPageObjects(); }, [selectedProjectId, selectedGroupId]);
 
-  // 构建分组树
+  // Build group tree
   const buildTreeData = (parentId = 0): DataNode[] => {
     return groups.filter((g) => g.parent_id === parentId).map((g) => ({
       key: `group-${g.id}`,
@@ -82,20 +84,20 @@ export default function UiElementsPage() {
   };
 
   const treeData: DataNode[] = [
-    { key: 'all', title: `全部元素 (${elements.length})` },
+    { key: 'all', title: `${t('uiAutomation.element.allElements')} (${elements.length})` },
     ...buildTreeData(),
   ];
 
-  // 元素操作
+  // Element operations
   const handleCreateGroup = async () => {
     const values = await form.validateFields();
     try {
       await createUiElementGroup({ project_id: selectedProjectId!, ...values });
-      message.success('分组创建成功');
+      message.success(t('uiAutomation.element.groupCreated'));
       setGroupModalOpen(false);
       form.resetFields();
       loadGroups();
-    } catch { message.error('创建失败'); }
+    } catch { message.error(t('uiAutomation.element.createFailed')); }
   };
 
   const handleElementSubmit = async () => {
@@ -104,27 +106,27 @@ export default function UiElementsPage() {
       const data = { ...values, project_id: selectedProjectId };
       if (editingElement) {
         await updateUiElement(editingElement.id, data);
-        message.success('更新成功');
+        message.success(t('uiAutomation.element.updateSuccess'));
       } else {
         await createUiElement(data);
-        message.success('创建成功');
+        message.success(t('uiAutomation.element.updateSuccess'));
       }
       setElementModalOpen(false);
       setEditingElement(null);
       form.resetFields();
       loadElements();
-    } catch { message.error('操作失败'); }
+    } catch { message.error(t('uiAutomation.element.operationFailed')); }
   };
 
   const handleCreatePO = async () => {
     const values = await form.validateFields();
     try {
       await createUiPageObject({ project_id: selectedProjectId!, ...values });
-      message.success('页面对象创建成功');
+      message.success(t('common.createSuccess'));
       setPoModalOpen(false);
       form.resetFields();
       loadPageObjects();
-    } catch { message.error('创建失败'); }
+    } catch { message.error(t('common.createFailed')); }
   };
 
   const handleGenerateCode = async (id: number) => {
@@ -132,18 +134,18 @@ export default function UiElementsPage() {
       const res = await generateUiPageObjectCode(id);
       setGeneratedCode(res.data.code);
       setCodeModalOpen(true);
-    } catch { message.error('生成失败'); }
+    } catch { message.error(t('uiAutomation.element.operationFailed')); }
   };
 
   const handleValidate = async (id: number) => {
     try {
       const res = await validateUiElement(id);
       if (res.data.found) {
-        message.success('元素定位验证通过');
+        message.success(t('uiAutomation.element.locatorVerified'));
       } else {
-        message.warning(`定位失败: ${res.data.error || '未知错误'}`);
+        message.warning(`${t('uiAutomation.element.locatorFailed')}: ${res.data.error || t('common.unknown')}`);
       }
-    } catch { message.error('验证请求失败'); }
+    } catch { message.error(t('uiAutomation.element.verifyFailed')); }
   };
 
   return (
@@ -151,11 +153,11 @@ export default function UiElementsPage() {
       <Row gutter={16}>
         <Col span={6}>
           <Card
-            size="small" title="元素分组"
+            size="small" title={t('uiAutomation.element.title')}
             extra={<Button size="small" icon={<FolderAddOutlined />} onClick={() => { form.resetFields(); setGroupModalOpen(true); }} />}
           >
             <Select
-              placeholder="选择项目" allowClear style={{ width: '100%', marginBottom: 8 }}
+              placeholder={t('common.selectProject')} allowClear style={{ width: '100%', marginBottom: 8 }}
               value={selectedProjectId} onChange={(v) => { setSelectedProjectId(v); setSelectedGroupId(undefined); }}
               options={projects.map((p) => ({ label: p.name, value: p.id }))}
             />
@@ -175,32 +177,32 @@ export default function UiElementsPage() {
           <Tabs
             items={[
               {
-                key: 'elements', label: '元素管理',
+                key: 'elements', label: t('uiAutomation.element.title'),
                 children: (
                   <div>
                     <div style={{ marginBottom: 8 }}>
                       <Button type="primary" icon={<PlusOutlined />}
                         disabled={!selectedProjectId}
                         onClick={() => { setEditingElement(null); form.resetFields(); setElementModalOpen(true); }}
-                      >新建元素</Button>
+                      >{t('uiAutomation.element.createElement')}</Button>
                     </div>
                     <Table rowKey="id" loading={loading} dataSource={elements} size="small"
                       pagination={false}
                       columns={[
-                        { title: '元素名称', dataIndex: 'name', width: 150 },
-                        { title: '定位策略', dataIndex: 'locator_type', width: 80, render: (v: string) => <Tag>{v}</Tag> },
-                        { title: '定位值', dataIndex: 'locator_value', ellipsis: true },
-                        { title: '页面 URL', dataIndex: 'page_url', ellipsis: true },
+                        { title: t('uiAutomation.element.name'), dataIndex: 'name', width: 150 },
+                        { title: t('uiAutomation.element.strategy'), dataIndex: 'locator_type', width: 80, render: (v: string) => <Tag>{v}</Tag> },
+                        { title: t('uiAutomation.element.locatorValue'), dataIndex: 'locator_value', ellipsis: true },
+                        { title: t('uiAutomation.element.pageUrl'), dataIndex: 'page_url', ellipsis: true },
                         {
-                          title: '操作', width: 180,
+                          title: t('common.action'), width: 180,
                           render: (_, record) => (
                             <Space>
                               <Button type="link" size="small" icon={<EditOutlined />}
                                 onClick={() => { setEditingElement(record); form.setFieldsValue(record); setElementModalOpen(true); }}
-                              >编辑</Button>
-                              <Button type="link" size="small" onClick={() => handleValidate(record.id)}>验证</Button>
+                              >{t('uiAutomation.element.edit')}</Button>
+                              <Button type="link" size="small" onClick={() => handleValidate(record.id)}>{t('uiAutomation.element.verify')}</Button>
                               <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                                onClick={async () => { try { await deleteUiElement(record.id); message.success('已删除'); loadElements(); } catch { message.error('删除失败'); } }}
+                                onClick={async () => { try { await deleteUiElement(record.id); message.success(t('uiAutomation.element.deleted')); loadElements(); } catch { message.error(t('uiAutomation.element.deleteFailed')); } }}
                               />
                             </Space>
                           ),
@@ -211,27 +213,27 @@ export default function UiElementsPage() {
                 ),
               },
               {
-                key: 'page-objects', label: '页面对象',
+                key: 'page-objects', label: t('uiAutomation.element.pageObjects'),
                 children: (
                   <div>
                     <div style={{ marginBottom: 8 }}>
                       <Button type="primary" icon={<PlusOutlined />}
                         disabled={!selectedProjectId}
                         onClick={() => { form.resetFields(); setPoModalOpen(true); }}
-                      >新建页面对象</Button>
+                      >{t('uiAutomation.element.pageObjects')}</Button>
                     </div>
                     <Table rowKey="id" dataSource={pageObjects} size="small" pagination={false}
                       columns={[
-                        { title: '页面名称', dataIndex: 'name', width: 150 },
+                        { title: t('uiAutomation.element.name'), dataIndex: 'name', width: 150 },
                         { title: 'URL', dataIndex: 'url', ellipsis: true },
-                        { title: '关联元素数', dataIndex: 'element_count', width: 100 },
+                        { title: t('uiAutomation.element.pageUrl'), dataIndex: 'element_count', width: 100 },
                         {
-                          title: '操作', width: 160,
+                          title: t('common.action'), width: 160,
                           render: (_, record) => (
                             <Space>
-                              <Button type="link" size="small" onClick={() => handleGenerateCode(record.id)}>生成代码</Button>
+                              <Button type="link" size="small" onClick={() => handleGenerateCode(record.id)}>{t('uiAutomation.element.generateCode')}</Button>
                               <Button type="link" danger size="small" icon={<DeleteOutlined />}
-                                onClick={async () => { try { await deleteUiPageObject(record.id); message.success('已删除'); loadPageObjects(); } catch { message.error('删除失败'); } }}
+                                onClick={async () => { try { await deleteUiPageObject(record.id); message.success(t('uiAutomation.element.deleted')); loadPageObjects(); } catch { message.error(t('uiAutomation.element.deleteFailed')); } }}
                               />
                             </Space>
                           ),
@@ -246,77 +248,77 @@ export default function UiElementsPage() {
         </Col>
       </Row>
 
-      {/* 新建分组弹窗 */}
-      <Modal title="新建分组" open={groupModalOpen} onOk={handleCreateGroup} onCancel={() => setGroupModalOpen(false)}>
+      {/* Create group modal */}
+      <Modal title={t('uiAutomation.element.createGroup')} open={groupModalOpen} onOk={handleCreateGroup} onCancel={() => setGroupModalOpen(false)}>
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="分组名称" rules={[{ required: true }]}>
-            <Input placeholder="如 登录页面" />
+          <Form.Item name="name" label={t('uiAutomation.element.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('uiAutomation.element.name')} />
           </Form.Item>
-          <Form.Item name="parent_id" label="父分组">
-            <Select allowClear placeholder="顶级分组（可选）"
+          <Form.Item name="parent_id" label={t('common.name')}>
+            <Select allowClear placeholder={t('common.selectPlaceholder')}
               options={groups.map((g) => ({ label: g.name, value: g.id }))}
             />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* 新建/编辑元素弹窗 */}
-      <Modal title={editingElement ? '编辑元素' : '新建元素'} open={elementModalOpen}
+      {/* Create/Edit element modal */}
+      <Modal title={editingElement ? t('uiAutomation.element.edit') : t('uiAutomation.element.createElement')} open={elementModalOpen}
         onOk={handleElementSubmit} onCancel={() => { setElementModalOpen(false); setEditingElement(null); }}
         width={600}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="元素名称" rules={[{ required: true }]}>
-            <Input placeholder="如 登录按钮" />
+          <Form.Item name="name" label={t('uiAutomation.element.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('uiAutomation.element.name')} />
           </Form.Item>
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="locator_type" label="定位策略" rules={[{ required: true }]} initialValue="css">
+              <Form.Item name="locator_type" label={t('uiAutomation.element.strategy')} rules={[{ required: true }]} initialValue="css">
                 <Select options={[
-                  { label: 'CSS 选择器', value: 'css' },
+                  { label: t('uiAutomation.element.cssSelector'), value: 'css' },
                   { label: 'XPath', value: 'xpath' },
                   { label: 'ID', value: 'id' },
                   { label: 'Name', value: 'name' },
                   { label: 'Class Name', value: 'class' },
-                  { label: '文本', value: 'text' },
+                  { label: t('uiAutomation.element.text'), value: 'text' },
                 ]} />
               </Form.Item>
             </Col>
             <Col span={16}>
-              <Form.Item name="locator_value" label="定位值" rules={[{ required: true }]}>
-                <Input placeholder='如 #login-btn 或 //button[@id="login"]' />
+              <Form.Item name="locator_value" label={t('uiAutomation.element.locatorValue')} rules={[{ required: true }]}>
+                <Input placeholder={t('uiAutomation.element.locatorPlaceholder')} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="page_url" label="页面 URL">
+          <Form.Item name="page_url" label={t('uiAutomation.element.pageUrl')}>
             <Input placeholder="https://example.com/login" />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item name="group_id" label="所属分组">
-            <Select allowClear placeholder="选择分组（可选）"
+          <Form.Item name="group_id" label={t('uiAutomation.element.name')}>
+            <Select allowClear placeholder={t('common.selectPlaceholder')}
               options={groups.map((g) => ({ label: g.name, value: g.id }))}
             />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* 新建页面对象弹窗 */}
-      <Modal title="新建页面对象" open={poModalOpen} onOk={handleCreatePO} onCancel={() => setPoModalOpen(false)}>
+      {/* Create page object modal */}
+      <Modal title={t('uiAutomation.element.pageObjects')} open={poModalOpen} onOk={handleCreatePO} onCancel={() => setPoModalOpen(false)}>
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="页面名称" rules={[{ required: true }]}>
-            <Input placeholder="如 登录页面" />
+          <Form.Item name="name" label={t('uiAutomation.element.name')} rules={[{ required: true }]}>
+            <Input placeholder={t('uiAutomation.element.name')} />
           </Form.Item>
-          <Form.Item name="url" label="页面 URL">
+          <Form.Item name="url" label={t('uiAutomation.element.pageUrl')}>
             <Input placeholder="https://example.com/login" />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* 生成代码弹窗 */}
-      <Modal title="Page Object 代码" open={codeModalOpen} onCancel={() => setCodeModalOpen(false)}
-        footer={<Button onClick={() => { navigator.clipboard.writeText(generatedCode); message.success('已复制'); }}>复制代码</Button>}
+      {/* Generate code modal */}
+      <Modal title={t('uiAutomation.element.pageObjectCode')} open={codeModalOpen} onCancel={() => setCodeModalOpen(false)}
+        footer={<Button onClick={() => { navigator.clipboard.writeText(generatedCode); message.success(t('uiAutomation.element.codeCopied')); }}>{t('uiAutomation.element.copyCode')}</Button>}
         width={700}
       >
         <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 4, overflow: 'auto', maxHeight: 400 }}>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Button, Table, Tag, Space, message, Select, Row, Col,
 } from 'antd';
@@ -12,31 +13,32 @@ import { getApiProjects } from '@/lib/api/api-testing';
 import type { TestRun } from '@/lib/api/test-management';
 import type { ApiProject } from '@/lib/api/api-testing';
 
-const RUN_STATUS_MAP: Record<string, { color: string; label: string }> = {
-  pending: { color: 'default', label: '待执行' },
-  in_progress: { color: 'processing', label: '执行中' },
-  completed: { color: 'success', label: '已完成' },
-};
-
-const CASE_STATUS_MAP: Record<string, { color: string; label: string }> = {
-  passed: { color: 'success', label: '通过' },
-  failed: { color: 'error', label: '失败' },
-  blocked: { color: 'warning', label: '阻塞' },
-  untested: { color: 'default', label: '未测' },
-};
-
 export default function RunListPage() {
+  const t = useTranslations();
   const router = useRouter();
+
+  const RUN_STATUS_MAP = useMemo(() => ({
+    pending: { color: 'default', label: t('common.pending') },
+    in_progress: { color: 'processing', label: t('common.running') },
+    completed: { color: 'success', label: t('common.completed') },
+  }), [t]);
+
+  const CASE_STATUS_MAP = useMemo(() => ({
+    passed: { color: 'success', label: t('common.passed') },
+    failed: { color: 'error', label: t('common.failed') },
+    blocked: { color: 'warning', label: t('common.blocked') },
+    untested: { color: 'default', label: t('common.untested') },
+  }), [t]);
   const locale = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'zh-cn';
 
-  // 项目列表（仅用于加载计划）
+  // Project list (for loading plans)
   const [projects, setProjects] = useState<ApiProject[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
 
-  // 计划列表（用于计划筛选器）
+  // Plan list (for filter)
   const [plans, setPlans] = useState<{ id: number; name: string }[]>([]);
 
-  // 执行列表
+  // Run list
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -44,14 +46,14 @@ export default function RunListPage() {
   const [planFilter, setPlanFilter] = useState<number | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
 
-  // 加载项目列表
+  // Load project list
   useEffect(() => {
     getApiProjects({ page_size: 100 }).then((res) => {
       setProjects(res.data.results || []);
-    }).catch((e) => console.warn('加载项目列表失败', e));
+    }).catch((e) => console.warn('Failed to load project list', e));
   }, []);
 
-  // 加载计划列表（用于筛选器）
+  // Load plan list (for filter)
   useEffect(() => {
     if (!projectId) { setPlans([]); return; }
     getPlans(projectId, { page_size: 100 }).then((res) => {
@@ -59,7 +61,7 @@ export default function RunListPage() {
     }).catch(() => setPlans([]));
   }, [projectId]);
 
-  // 加载执行列表
+  // Load run list
   const loadRuns = useCallback(async () => {
     setLoading(true);
     try {
@@ -72,7 +74,7 @@ export default function RunListPage() {
       setRuns(res.data.results || []);
       setTotal(res.data.count || 0);
     } catch {
-      message.error('加载失败');
+      message.error(t('common.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -87,50 +89,50 @@ export default function RunListPage() {
       title: 'ID', dataIndex: 'id', key: 'id', width: 60,
     },
     {
-      title: '名称', dataIndex: 'name', key: 'name', ellipsis: true,
+      title: t('common.name'), dataIndex: 'name', key: 'name', ellipsis: true,
       render: (text: string, record) => (
         <a onClick={() => router.push(`/${locale}/test-management/runs/${record.id}`)}>{text}</a>
       ),
     },
     {
-      title: '计划 ID', dataIndex: 'plan_id', key: 'plan_id', width: 80,
+      title: t('testManagement.plan.title'), dataIndex: 'plan_id', key: 'plan_id', width: 80,
     },
     {
-      title: '状态', dataIndex: 'status', key: 'status', width: 90,
+      title: t('common.status'), dataIndex: 'status', key: 'status', width: 90,
       render: (v: string) => {
-        const s = RUN_STATUS_MAP[v] || { color: 'default', label: v };
+        const s = RUN_STATUS_MAP[v as keyof typeof RUN_STATUS_MAP] || { color: 'default', label: v };
         return <Tag color={s.color}>{s.label}</Tag>;
       },
     },
     {
-      title: '通过', dataIndex: 'passed', key: 'passed', width: 60,
+      title: t('common.passed'), dataIndex: 'passed', key: 'passed', width: 60,
       render: (v: number) => <Tag color="success">{v}</Tag>,
     },
     {
-      title: '失败', dataIndex: 'failed', key: 'failed', width: 60,
+      title: t('common.failed'), dataIndex: 'failed', key: 'failed', width: 60,
       render: (v: number) => <Tag color="error">{v}</Tag>,
     },
     {
-      title: '阻塞', dataIndex: 'blocked', key: 'blocked', width: 60,
+      title: t('common.blocked'), dataIndex: 'blocked', key: 'blocked', width: 60,
       render: (v: number) => <Tag color="warning">{v}</Tag>,
     },
     {
-      title: '未测', dataIndex: 'untested', key: 'untested', width: 60,
+      title: t('common.untested'), dataIndex: 'untested', key: 'untested', width: 60,
       render: (v: number) => <Tag>{v}</Tag>,
     },
     {
-      title: '总用例', dataIndex: 'total_cases', key: 'total_cases', width: 70,
+      title: t('common.total'), dataIndex: 'total_cases', key: 'total_cases', width: 70,
     },
     {
-      title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 170,
+      title: t('common.createdAt'), dataIndex: 'created_at', key: 'created_at', width: 170,
     },
     {
-      title: '操作', key: 'action', width: 80,
+      title: t('common.action'), key: 'action', width: 80,
       render: (_, record) => (
         <Button type="link" size="small" icon={<EyeOutlined />}
           onClick={() => router.push(`/${locale}/test-management/runs/${record.id}`)}
         >
-          查看
+          {t('common.detail')}
         </Button>
       ),
     },
@@ -141,7 +143,7 @@ export default function RunListPage() {
       <Row gutter={16} style={{ marginBottom: 16 }} align="middle">
         <Col span={5}>
           <Select
-            placeholder="选择项目（加载计划）"
+            placeholder={t('common.selectProject')}
             style={{ width: '100%' }}
             value={projectId}
             onChange={(v) => { setProjectId(v); setPlanFilter(undefined); }}
@@ -153,7 +155,7 @@ export default function RunListPage() {
         </Col>
         <Col span={5}>
           <Select
-            placeholder="按计划筛选"
+            placeholder={t('testManagement.plan.title')}
             allowClear
             style={{ width: '100%' }}
             value={planFilter}
@@ -164,15 +166,15 @@ export default function RunListPage() {
         </Col>
         <Col span={4}>
           <Select
-            placeholder="按状态筛选"
+            placeholder={t('common.status')}
             allowClear
             style={{ width: '100%' }}
             value={statusFilter}
             onChange={(v) => { setStatusFilter(v); setPage(1); }}
             options={[
-              { label: '待执行', value: 'pending' },
-              { label: '执行中', value: 'in_progress' },
-              { label: '已完成', value: 'completed' },
+              { label: t('common.pending'), value: 'pending' },
+              { label: t('common.running'), value: 'in_progress' },
+              { label: t('common.completed'), value: 'completed' },
             ]}
           />
         </Col>
@@ -186,7 +188,7 @@ export default function RunListPage() {
         pagination={{
           current: page, total, pageSize: 20,
           onChange: (p) => setPage(p),
-          showTotal: (t) => `共 ${t} 条`,
+          showTotal: (totalCount) => t('common.totalCount', { count: totalCount }),
         }}
         size="small"
       />
